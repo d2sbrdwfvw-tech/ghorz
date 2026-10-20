@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="غرز">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
 <title>غرز</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#483127">
@@ -371,6 +377,9 @@ function required(total,mode){return mode==='deposit'?Math.round(total*S.setting
 function profileReady(p){if(!p)return false;if(p.method==='manual')return MFIELDS.every(([k])=>p.values&&p.values[k]>0);return !!p.taken}
 function addWorkDays(ts,n){const d=new Date(ts);let c=0;while(c<n){d.setDate(d.getDate()+1);const w=d.getDay();if(w!==5&&w!==6)c++}return d.getTime()}
 const workLabel=()=>{const n=S.settings.dueDays;return n===1?'يوم عمل واحد':n===2?'يومي عمل':n<=10?`${n} أيام عمل`:`${n} يوم عمل`};
+let installEvt=null;
+const installable=()=>{try{return !!document.querySelector('link[rel="manifest"]')&&!matchMedia('(display-mode: standalone)').matches&&!navigator.standalone&&localStorage.getItem('ghorz-install-hide')!=='1'}catch(e){return false}};
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
 const isLate=o=>!o.cancelled&&o.stage<9&&Date.now()>o.due;
 const isStaff=()=>SES&&SES.role!=='customer';
 
@@ -517,6 +526,10 @@ V.home=()=>{
   const mpt=S.settings.metersPerThobe;
   return `<div class="stack">
    <div><h2>أهلاً بك</h2><p class="muted small" style="margin:2px 0 0">ماذا تريد أن تفصّل اليوم؟</p></div>
+   ${installable()&&(installEvt||isIOS())?`<div class="panel row" style="gap:12px;align-items:flex-start"><span class="logo" style="width:40px;flex:none" aria-hidden="true"></span>
+     <div style="flex:1;min-width:0"><b>ثبّت تطبيق غرز على جوالك</b><div class="muted small">${installEvt?'يفتح بشاشة كاملة مثل أي تطبيق.':'من المتصفح اضغط زر المشاركة، ثم «إضافة إلى الشاشة الرئيسية».'}</div>
+     ${installEvt?'<button class="btn sm" data-act="install" style="margin-top:8px">تثبيت</button>':''}</div>
+     <button class="icon-btn" data-act="install-hide" aria-label="إخفاء">✕</button></div>`:''}
    <div class="hero sadu"><div><h2>فصّل ثوبك على مقاسك</h2><p>اختر القماش والتفاصيل وشاهد ثوبك قبل الطلب. توصيل مجاني، وجاهز خلال ${workLabel()}.</p><button class="btn sm" data-act="go" data-id="design">ابدأ التصميم</button></div>
      <span class="logo-1c" style="width:100px;justify-self:center" role="img" aria-label="غرز"></span></div>
    <div class="quick">
@@ -929,6 +942,8 @@ const ACT={
  't-add':()=>{const n=$('#nt').value.trim();if(!n)return toast('أدخل الاسم','bad');S.tailors.push({id:'t'+Date.now(),name:n});log('نظام',`إضافة الخياط ${n}`);save()},
  'b-ok':id=>{const b=S.bookings.find(x=>x.id===id);b.status='approved';log('حجز',`تأكيد زيارة ${b.date} ${b.slot}`);save()},
  'b-no':id=>{const b=S.bookings.find(x=>x.id===id);b.status='rejected';log('حجز',`رفض زيارة ${b.date} ${b.slot}`);save()},
+ install:()=>{if(installEvt){installEvt.prompt();installEvt.userChoice.finally(()=>{installEvt=null;render()})}},
+ 'install-hide':()=>{try{localStorage.setItem('ghorz-install-hide','1')}catch(e){}},
  reset:()=>{ui.confirm='reset'},
  'reset-yes':()=>{try{localStorage.removeItem(KEY)}catch(e){}S=null;seed();save();Object.assign(ui,{confirm:null,openOrder:null,d:null,lastOrder:null});toast('أُعيد ضبط البيانات')}
 };
@@ -950,9 +965,12 @@ document.addEventListener('change',e=>{const t=e.target;
     else{v=parseFloat(t.value);if(!isFinite(v)||v<0||(t.max&&v>+t.max)||(t.dataset.path==='settings.depositPct'&&v<1)||(t.dataset.path==='settings.metersPerThobe'&&v<=0)||(t.dataset.path==='settings.dueDays'&&(v<1||v!==Math.round(v)))){toast('قيمة غير صحيحة','bad');return render()}}
     const old=setPath(t.dataset.path,v);log('إعدادات',`${t.dataset.label}: ${Array.isArray(old)?old.join('، '):old} ← ${Array.isArray(v)?v.join('، '):v}`);save();toast('حُفظ التغيير');return render()}
   if(t.dataset.ch&&CH[t.dataset.ch]){CH[t.dataset.ch](t);render()}});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;if(SES)render()});
+window.addEventListener('appinstalled',()=>{installEvt=null;render()});
 window.addEventListener('storage',e=>{if(e.key===KEY&&e.newValue){try{S=JSON.parse(e.newValue);migrate();render()}catch(err){}}});
 window.addEventListener('hashchange',()=>{loadSes();Object.assign(ui,{tab:'home',sub:null,openOrder:null,confirm:null});render()});
 load();render();
 </script>
+<script>if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
 </body>
 </html>
