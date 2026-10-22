@@ -532,11 +532,6 @@ V.home=()=>{
      <button class="icon-btn" data-act="install-hide" aria-label="إخفاء">✕</button></div>`:''}
    <div class="hero sadu"><div><h2>فصّل ثوبك على مقاسك</h2><p>اختر القماش والتفاصيل وشاهد ثوبك قبل الطلب. توصيل مجاني، وجاهز خلال ${workLabel()}.</p><button class="btn sm" data-act="go" data-id="design">ابدأ التصميم</button></div>
      <span class="logo-1c" style="width:100px;justify-self:center" role="img" aria-label="غرز"></span></div>
-   <div class="quick">
-     <button data-act="go" data-id="account" data-sub="measure" data-m="rep">${IC.car}احجز مندوب مقاسات</button>
-     <button data-act="go" data-id="account" data-sub="measure" data-m="manual">${IC.ruler}أدخل مقاساتك</button>
-     <button data-act="go" data-id="account" data-sub="orders">${IC.list}طلباتي</button>
-   </div>
    ${act?`<div class="sec-title"><h3>طلبك الحالي</h3><button class="link" data-act="open-order" data-id="${act.id}">التفاصيل</button></div>
      <button class="panel stack" data-act="open-order" data-id="${act.id}" style="gap:8px;text-align:start;cursor:pointer;width:100%">
       <div class="spread"><span class="ref">${act.ref}</span><span class="pill ${isLate(act)?'bad':'acc'}">${STAGES[act.stage]}</span></div>

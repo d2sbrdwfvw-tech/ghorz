@@ -1,5 +1,5 @@
 // غرز: يحفظ نسخة من التطبيق ليفتح حتى بدون إنترنت، ويجلب الأحدث كلما توفر الاتصال
-const CACHE = 'ghorz-v1';
+const CACHE = 'ghorz-v2';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
