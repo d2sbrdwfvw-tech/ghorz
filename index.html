@@ -188,6 +188,32 @@ dl.specs dd{margin:0}
 .staff-app .appbar{background:var(--cocoa);color:var(--ivory);border-bottom-color:var(--cocoa)}
 .staff-app .appbar .icon-btn{color:var(--ivory)}
 .staff-app .appbar .demo-badge{background:rgba(238,230,219,.16);color:var(--ivory)}
+.ms-sheet{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ms-row{display:grid;grid-template-columns:22px minmax(0,1fr) 104px;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);cursor:text}
+.ms-row:last-child{border-bottom:0}
+.ms-row .n{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:.68rem}
+.ms-row .t{display:flex;flex-direction:column;min-width:0;line-height:1.35}
+.ms-row .l{font-weight:600;font-size:.9rem}
+.ms-row small{color:var(--muted);font-size:.72rem}
+.ms-row .in{position:relative;display:block;direction:ltr;min-width:0}
+.ms-row input{width:100%;box-sizing:border-box;-moz-appearance:textfield;appearance:textfield}
+.ms-row input::-webkit-outer-spin-button,.ms-row input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.ms-row input{padding-left:8px!important;padding-right:32px!important;text-align:center!important;font-size:1rem;font-variant-numeric:tabular-nums}
+.ms-row .in i{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-style:normal;font-size:.72rem;color:var(--muted);pointer-events:none}
+.ms-row:focus-within{background:var(--accent-soft)}
+.ms-group{font-size:.86rem;color:var(--gold);margin:6px 0 -2px;font-weight:600}
+.opt{font-style:normal;font-size:.68rem;color:var(--muted);background:var(--sunk);padding:0 6px;border-radius:999px;margin-inline-start:4px}
+.seasons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.season{display:flex;flex-direction:column;text-align:start;padding:0;overflow:hidden;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:16px;color:var(--ink)}
+.season .strip{display:flex;height:84px}
+.season .strip i{flex:1;border-inline-end:1px solid rgba(0,0,0,.06)}
+.season .strip i:last-child{border:0}
+.season .sb{display:flex;flex-direction:column;gap:3px;padding:12px 12px 14px;position:relative}
+.season .sb::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--gold)}
+.season.winter .sb::before{background:var(--cocoa)}
+.season b{font-size:1rem}
+.season small{color:var(--muted);font-size:.76rem;line-height:1.4}
+.season .cnt{margin-top:4px;font-size:.76rem;color:var(--gold);font-weight:600}
 /* design steps */
 .steps{display:flex;gap:6px}
 .steps>*{flex:1;text-align:center;padding:7px 6px;border-radius:999px;background:var(--sunk);color:var(--muted);font-size:.82rem;font-weight:500;border:0;cursor:pointer}
@@ -328,9 +354,9 @@ const MFIELDS=[
  ['wrist','محيط المعصم','حول المعصم فوق العظمة',13,26]];
 const METHOD={manual:'إدخال يدوي',thobe:'إرسال ثوب سابق',rep:'زيارة مندوب'};
 const BOOK={pending:['بانتظار موافقة الإدارة','warn'],approved:['مؤكد','good'],rejected:['مرفوض','bad']};
-const ATABS={overview:'نظرة عامة',orders:'الطلبات والإنتاج',inventory:'المخزون',tailors:'الخياطون',reps:'حجوزات المندوبين',settings:'الأسعار والإعدادات',log:'سجل التدقيق'};
+const ATABS={overview:'نظرة عامة',orders:'الطلبات والإنتاج',measures:'المقاسات',inventory:'المخزون',tailors:'الخياطون',reps:'حجوزات المندوبين',settings:'الأسعار والإعدادات',log:'سجل التدقيق'};
 const ROLES={manager:'مدير',staff:'موظف',tailor:'خياط',rep:'مندوب'};
-const ROLE_TABS={manager:Object.keys(ATABS),staff:['orders','inventory','reps','log'],tailor:['orders'],rep:['reps']};
+const ROLE_TABS={manager:Object.keys(ATABS),staff:['orders','measures','inventory','reps','log'],tailor:['orders','measures'],rep:['measures','reps']};
 const D=864e5;
 
 /* ---------- icons ---------- */
@@ -364,7 +390,7 @@ const fdt=new Intl.DateTimeFormat('ar-u-ca-gregory-nu-latn',{day:'numeric',month
 const dur=ms=>{const h=ms/36e5;return h<24?`${Math.max(.1,Math.round(h*10)/10)} ساعة`:`${Math.round(h/24*10)/10} يوم`};
 
 let S,SES=null;
-const ui={tab:'home',sub:null,adminTab:'overview',flt:{},d:null,openOrder:null,oFilter:'all',mMethod:'manual',cartProfile:null,del:'pickup',payMode:'full',lastOrder:null,confirm:null,logF:'',login:{step:'phone',phone:'',role:'manager'}};
+const ui={tab:'home',sub:null,adminTab:'overview',flt:{},d:null,openOrder:null,oFilter:'all',msFilter:'review',openMeasure:null,mMethod:'manual',cartProfile:null,del:'pickup',payMode:'full',lastOrder:null,confirm:null,logF:'',login:{step:'phone',phone:'',role:'manager'}};
 
 const fab=id=>S.fabrics.find(f=>f.id===id);
 const opt=(g,id)=>S.options[g].find(o=>o.id===id);
@@ -374,12 +400,14 @@ function unitPrice(it){const f=fab(it.fabricId);let p=H(S.settings.basePrice)+H(
 function optSummary(o){const p=['ياقة '+opt('collar',o.collar).name,o.sleeve==='s1'?'كم عادي':opt('sleeve',o.sleeve).name,opt('closure',o.closure).name,'جيب أمامي '+opt('front',o.front).name];if(o.right==='r1')p.push('جيب داخلي يمين');if(o.left==='l1')p.push('جيب داخلي يسار');return p.join('، ')}
 function totals(items,fee){const sub=items.reduce((a,it)=>a+it.unit*it.qty,0);const vat=Math.round((sub+fee)*S.settings.vatPct/100);return{sub,vat,total:sub+fee+vat}}
 function required(total,mode){return mode==='deposit'?Math.round(total*S.settings.depositPct/100):total}
-function profileReady(p){if(!p)return false;if(p.method==='manual')return MFIELDS.every(([k])=>p.values&&p.values[k]>0);return !!p.taken}
+function profileReady(p){return !!p&&p.status==='approved'}
 function addWorkDays(ts,n){const d=new Date(ts);let c=0;while(c<n){d.setDate(d.getDate()+1);const w=d.getDay();if(w!==5&&w!==6)c++}return d.getTime()}
 const workLabel=()=>{const n=S.settings.dueDays;return n===1?'يوم عمل واحد':n===2?'يومي عمل':n<=10?`${n} أيام عمل`:`${n} يوم عمل`};
 let installEvt=null;
 const installable=()=>{try{return !!document.querySelector('link[rel="manifest"]')&&!matchMedia('(display-mode: standalone)').matches&&!navigator.standalone&&localStorage.getItem('ghorz-install-hide')!=='1'}catch(e){return false}};
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
+const SEASONS={summer:['الأقمشة الصيفية','خفيفة وباردة لأيام الحر'],winter:['الأقمشة الشتوية','أدفأ وأثقل لأيام البرد']};
+const seasonOf=f=>f.season||(/صوف/.test(f.type||'')?'winter':'summer');
 const isLate=o=>!o.cancelled&&o.stage<9&&Date.now()>o.due;
 const isStaff=()=>SES&&SES.role!=='customer';
 
@@ -388,12 +416,13 @@ function seed(){
   S={settings:{workDays:true,basePrice:130,allowDeposit:true,depositPct:50,vatPct:15,metersPerThobe:3.5,dueDays:7,lowStock:30,slots:['10:00 – 12:00','13:00 – 15:00','17:00 – 19:00','19:00 – 21:00']},
   zones:[{id:'z1',name:'الرياض — الشمال',fee:0,active:true},{id:'z2',name:'الرياض — الشرق',fee:0,active:true},{id:'z3',name:'الرياض — الوسط',fee:0,active:true},{id:'z4',name:'الرياض — الغرب',fee:0,active:false}],
   fabrics:[
-   {id:'f1',code:'AS-101',brand:'الأصيل',type:'قطن',color:'أبيض ثلجي',hex:'#f6f7f4',price:180,stock:240,reserved:0,desc:'قطن ناعم بلمعة خفيفة، مناسب للاستخدام اليومي والصيف.',specs:{'التركيب':'100% قطن','الوزن':'115 غ/م²','الملمس':'ناعم'}},
+   {id:'f1',season:'summer',code:'AS-101',brand:'الأصيل',type:'قطن',color:'أبيض ثلجي',hex:'#f6f7f4',price:180,stock:240,reserved:0,desc:'قطن ناعم بلمعة خفيفة، مناسب للاستخدام اليومي والصيف.',specs:{'التركيب':'100% قطن','الوزن':'115 غ/م²','الملمس':'ناعم'}},
    {id:'f2',code:'AS-114',brand:'الأصيل',type:'قطن',color:'عاجي',hex:'#ede6d6',price:190,stock:120,reserved:0,desc:'لون عاجي دافئ يناسب المناسبات النهارية.',specs:{'التركيب':'100% قطن','الوزن':'120 غ/م²','الملمس':'ناعم'}},
    {id:'f3',code:'SD-220',brand:'سدير',type:'مخلوط',color:'رمادي فاتح',hex:'#c8cbc7',price:160,stock:85,reserved:0,desc:'قماش مخلوط مقاوم للتجعد وسهل الكي.',specs:{'التركيب':'65% بوليستر، 35% قطن','الوزن':'135 غ/م²','الملمس':'متوسط'}},
    {id:'f4',code:'SD-231',brand:'سدير',type:'مخلوط',color:'بيج',hex:'#d6c9b0',price:160,stock:24,reserved:0,desc:'بيج هادئ للاستخدام اليومي.',specs:{'التركيب':'65% بوليستر، 35% قطن','الوزن':'135 غ/م²','الملمس':'متوسط'}},
-   {id:'f5',code:'NJ-305',brand:'نجد',type:'صوف خفيف',color:'كحلي',hex:'#2b3447',price:260,stock:60,reserved:0,desc:'صوف خفيف للشتاء بسقوط جميل.',specs:{'التركيب':'70% صوف، 30% بوليستر','الوزن':'210 غ/م²','الملمس':'دافئ'}},
-   {id:'f6',code:'NJ-318',brand:'نجد',type:'صوف خفيف',color:'بني فاتح',hex:'#987d61',price:260,stock:2,reserved:0,desc:'بني شتوي، الكمية الحالية لا تكفي ثوباً كاملاً.',specs:{'التركيب':'70% صوف، 30% بوليستر','الوزن':'210 غ/م²','الملمس':'دافئ'}}],
+   {id:'f5',season:'winter',code:'NJ-305',brand:'نجد',type:'صوف خفيف',color:'كحلي',hex:'#2b3447',price:260,stock:60,reserved:0,desc:'صوف خفيف للشتاء بسقوط جميل.',specs:{'التركيب':'70% صوف، 30% بوليستر','الوزن':'210 غ/م²','الملمس':'دافئ'}},
+   {id:'f7',season:'winter',code:'NJ-322',brand:'نجد',type:'صوف خفيف',color:'رمادي فحمي',hex:'#4a4d52',price:270,stock:75,reserved:0,desc:'رمادي داكن شتوي بملمس دافئ.',specs:{'التركيب':'70% صوف، 30% بوليستر','الوزن':'220 غ/م²','الملمس':'دافئ'}},
+   {id:'f6',season:'winter',code:'NJ-318',brand:'نجد',type:'صوف خفيف',color:'بني فاتح',hex:'#987d61',price:260,stock:2,reserved:0,desc:'بني شتوي، الكمية الحالية لا تكفي ثوباً كاملاً.',specs:{'التركيب':'70% صوف، 30% بوليستر','الوزن':'210 غ/م²','الملمس':'دافئ'}}],
   options:{
    collar:[{id:'c1',name:'عادي',price:0},{id:'c2',name:'قلاب',price:10}],
    sleeve:NEW_OPTS.sleeve.map(o=>({...o})),
@@ -403,9 +432,10 @@ function seed(){
    left:[{id:'l0',name:'بدون جيب داخلي',price:0},{id:'l1',name:'مع جيب صغير',price:5}]},
   tailors:[{id:'t1',name:'سليم'},{id:'t2',name:'رشيد'},{id:'t3',name:'أنور'}],
   profiles:[
-   {id:'p1',name:'مقاساتي',method:'manual',values:{length:146,shoulder:47,chest:108,waist:98,sleeve:62,neck:41,wrist:18},updated:now-30*D},
-   {id:'p2',name:'ثوب العيد السابق',method:'thobe',values:{},taken:false,updated:now-6*D},
-   {id:'p3',name:'مقاسات المندوب',method:'rep',values:{},taken:false,bookingId:'b1',updated:now-D}],
+   {id:'p1',name:'مقاساتي',owner:'عميل تجريبي',phone:'512345678',method:'manual',values:{length:146,shoulder:47,chest:108,waist:98,sleeve:62,neck:41,wrist:18},status:'approved',enteredBy:'العميل',enteredAt:now-30*D,approvedBy:'مدير · 500000001',approvedAt:now-29*D,updated:now-29*D,history:[{t:now-30*D,text:'سجّل المقاسات: العميل'},{t:now-29*D,text:'اعتمد المقاسات: مدير · 500000001'}]},
+   {id:'p2',name:'ثوب العيد السابق',owner:'عميل تجريبي',phone:'512345678',method:'thobe',values:{},status:'awaiting',updated:now-6*D,history:[]},
+   {id:'p3',name:'مقاسات المندوب',owner:'عميل تجريبي',phone:'512345678',method:'rep',values:{},status:'awaiting',bookingId:'b1',updated:now-D,history:[]},
+   {id:'p4',name:'مقاسات المحل',owner:'سعد العتيبي',phone:'555012345',method:'manual',values:{length:150,shoulder:48,chest:112,waist:101,sleeve:63,neck:42,wrist:18.5},status:'review',enteredBy:'موظف · 500000002',enteredAt:now-3*36e5,updated:now-3*36e5,history:[{t:now-3*36e5,text:'سجّل المقاسات: موظف · 500000002'}]}],
   bookings:[{id:'b1',city:'الرياض',address:'حي الياسمين، قرب مسجد الحي',date:new Date(now+3*D).toISOString().slice(0,10),slot:'17:00 – 19:00',status:'pending',created:now-D}],
   cart:[],orders:[],log:[],seq:1006};
   const mk=(n,daysAgo,stage,items,pay,paidAll,tailor,profile,ready,zone,delivered,qc)=>{
@@ -430,7 +460,7 @@ function seed(){
   log('نظام','تحميل البيانات التجريبية: 6 أقمشة، 5 طلبات');
   return S;
 }
-function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
+function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
 function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate()}}catch(e){S=null}if(!S)seed();loadSes()}
 function loadSes(){try{SES=JSON.parse(localStorage.getItem(sesKey())||'null')}catch(e){SES=null}if(SES&&(SES.role==='customer')===isStaffApp())SES=null}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -537,22 +567,27 @@ V.home=()=>{
       <div class="spread"><span class="ref">${act.ref}</span><span class="pill ${isLate(act)?'bad':'acc'}">${STAGES[act.stage]}</span></div>
       <div class="prog"><i style="width:${Math.round(act.stage/9*100)}%"></i></div>
       <span class="muted small">التسليم المتوقع ${fdate.format(act.due)} · المتبقي ${money(act.total-act.paid)}</span></button>`:''}
-   <div class="sec-title"><h3>أقمشة مختارة</h3><button class="link" data-act="go" data-id="store">عرض الكل</button></div>
-   <div class="hscroll">${S.fabrics.filter(f=>avail(f)>=mpt).map(f=>`<button class="mini-fab" data-act="fabric-sheet" data-id="${f.id}"><div class="sw" style="--sw:${esc(f.hex)}"></div><div class="t"><b>${esc(f.color)}</b><br><span class="muted">${money(H(f.price))}</span></div></button>`).join('')}</div>
+   <div class="sec-title"><h3>الأقمشة</h3></div>
+   <div class="seasons">${Object.entries(SEASONS).map(([k,[t,d]])=>{const fs=S.fabrics.filter(f=>seasonOf(f)===k),n=fs.filter(f=>avail(f)>=mpt).length;
+     return `<button class="season ${k}" data-act="season" data-id="${k}"><span class="strip">${fs.slice(0,5).map(f=>`<i style="background:${esc(f.hex)}"></i>`).join('')}</span>
+       <span class="sb"><b>${t}</b><small>${d}</small><span class="cnt">${n===0?'لا توجد أقمشة متوفرة':n===1?'قماش واحد متوفر':n===2?'قماشان متوفران':n<=10?n+' أقمشة متوفرة':n+' قماشاً متوفراً'}</span></span></button>`}).join('')}</div>
    <p class="note demo">هذه نسخة تجريبية: الأقمشة والأسعار والطلبات للتجربة فقط، والدفع محاكاة.</p>
   </div>`;
 };
+const fabCard=f=>`<article class="fab">
+    <div class="swatch" style="--sw:${esc(f.hex)}"><span class="demo-tag">صورة تجريبية</span></div>
+    <div class="fab-body"><div class="spread"><span class="code">${esc(f.code)}</span></div>
+      <h3>${esc(f.color)}</h3><div class="muted small">${esc(f.brand)} · ${esc(f.type)}</div>
+      <div class="price">${money(H(f.price))}</div>${availBadge(f)}
+      <button class="btn sm" data-act="fabric-sheet" data-id="${f.id}">التفاصيل</button></div></article>`;
+V.season=k=>{const list=S.fabrics.filter(f=>seasonOf(f)===k).sort((a,b)=>(avail(b)>=S.settings.metersPerThobe)-(avail(a)>=S.settings.metersPerThobe));
+  return `<div class="stack"><p class="muted" style="margin:0">${SEASONS[k][1]}</p><div class="fabrics">${list.map(fabCard).join('')||'<p class="empty">لا توجد أقمشة في هذا القسم حالياً.</p>'}</div></div>`};
 V.store=()=>{
   const uniq=k=>[...new Set(S.fabrics.map(f=>f[k]))];
   const sel=(label,k)=>`<select id="flt-${k}" data-ch="filter" data-k="${k}" aria-label="${label}"><option value="">${label}: الكل</option>${uniq(k).map(v=>`<option value="${esc(v)}" ${ui.flt[k]===v?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
   const list=S.fabrics.filter(f=>['brand','type','color'].every(k=>!ui.flt[k]||f[k]===ui.flt[k]));
   return `<div class="stack"><div class="filters">${sel('الماركة','brand')}${sel('النوع','type')}${sel('اللون','color')}</div>
-  <div class="fabrics">${list.map(f=>`<article class="fab">
-    <div class="swatch" style="--sw:${esc(f.hex)}"><span class="demo-tag">صورة تجريبية</span></div>
-    <div class="fab-body"><div class="spread"><span class="code">${esc(f.code)}</span></div>
-      <h3>${esc(f.color)}</h3><div class="muted small">${esc(f.brand)} · ${esc(f.type)}</div>
-      <div class="price">${money(H(f.price))}</div>${availBadge(f)}
-      <button class="btn sm" data-act="fabric-sheet" data-id="${f.id}">التفاصيل</button></div></article>`).join('')||'<p class="empty">لا توجد أقمشة بهذه المواصفات.</p>'}</div></div>`;
+  <div class="fabrics">${list.map(fabCard).join('')||'<p class="empty">لا توجد أقمشة بهذه المواصفات.</p>'}</div></div>`;
 };
 V.fabric=id=>{const f=fab(id),out=avail(f)<S.settings.metersPerThobe;
   return `<div class="stack"><div class="sheet"><div class="swatch" style="--sw:${esc(f.hex)}"><span class="demo-tag">صورة تجريبية</span></div>
@@ -658,7 +693,7 @@ V.order=id=>{const o=S.orders.find(x=>x.id===id);if(!o)return'<p class="empty">�
    <dt>حالة التسليم</dt><dd>${o.delivery.status==='delivered'?'تم '+fdate.format(o.delivery.date):'لم يُسلّم بعد'}</dd></dl></div></div>`};
 V.measure=()=>{
   const book=id=>S.bookings.find(b=>b.id===id);
-  const status=p=>{if(profileReady(p))return'<span class="pill good">جاهزة</span>';if(p.method==='rep'){const b=book(p.bookingId);return b?`<span class="pill ${BOOK[b.status][1]}">${BOOK[b.status][0]}</span>`:''}if(p.method==='thobe')return'<span class="pill warn">بانتظار الثوب</span>';return'<span class="pill warn">ناقصة</span>'};
+  const status=p=>{if(p.status==='approved')return'<span class="pill good">معتمدة</span>';if(p.status==='review')return'<span class="pill acc">قيد المراجعة</span>';if(p.status==='rejected')return'<span class="pill bad">تحتاج إعادة قياس</span>';if(p.method==='rep'){const b=book(p.bookingId);return b?`<span class="pill ${BOOK[b.status][1]}">${BOOK[b.status][0]}</span>`:''}if(p.method==='thobe')return'<span class="pill warn">بانتظار الثوب</span>';return'<span class="pill warn">ناقصة</span>'};
   const mm=ui.mMethod,tomorrow=new Date(Date.now()+D).toISOString().slice(0,10);
   let form='';
   if(mm==='manual')form=`<div class="guide">${guideSVG()}<p class="muted small" style="margin:4px 8px 6px">رسم توضيحي تجريبي، تُستبدل به صور حقيقية لاحقاً.</p></div>
@@ -687,7 +722,7 @@ const A={};
 A.overview=()=>{
   const act=S.orders.filter(o=>!o.cancelled),sum=f=>act.reduce((a,o)=>a+f(o),0);
   const dep=act.filter(o=>o.payMode==='deposit').reduce((a,o)=>a+o.required,0);
-  const late=act.filter(isLate),low=S.fabrics.filter(f=>avail(f)<S.settings.lowStock),pend=S.bookings.filter(b=>b.status==='pending');
+  const late=act.filter(isLate),low=S.fabrics.filter(f=>avail(f)<S.settings.lowStock),pend=S.bookings.filter(b=>b.status==='pending'),msq=S.profiles.filter(p=>p.status==='review');
   const open=act.filter(o=>o.stage<9),counts=STAGES.slice(0,9).map((_,i)=>open.filter(o=>o.stage===i).length),mx=Math.max(1,...counts);
   return `<div class="stack"><div class="kpis">
     <div class="kpi"><span>إجمالي المبيعات</span><b>${money(sum(o=>o.total))}</b><small>${act.length} طلب</small></div>
@@ -698,7 +733,8 @@ A.overview=()=>{
       ${late.map(o=>`<li><span><span class="pill bad">متأخر</span> <span class="ref">${o.ref}</span> · ${STAGES[o.stage]}</span><span class="small muted">${dur(Date.now()-o.due)}</span></li>`).join('')}
       ${low.map(f=>`<li><span><span class="pill warn">مخزون منخفض</span> ${esc(f.code)} ${esc(f.color)}</span><span class="small">${mtr(avail(f))}</span></li>`).join('')}
       ${pend.map(b=>`<li><span><span class="pill warn">حجز مندوب</span> ${esc(b.city)} · <span class="num">${esc(b.date)}</span></span><span class="small muted">بانتظار الموافقة</span></li>`).join('')}
-      ${!late.length&&!low.length&&!pend.length?'<li class="muted">لا شيء يحتاج متابعة الآن.</li>':''}</ul></div>
+      ${msq.map(p=>`<li><span><span class="pill acc">مقاسات</span> ${esc(p.owner||'عميل')} · ${esc(p.name)}</span><button class="link" data-act="open-measure" data-id="${p.id}">مراجعة</button></li>`).join('')}
+      ${!late.length&&!low.length&&!pend.length&&!msq.length?'<li class="muted">لا شيء يحتاج متابعة الآن.</li>':''}</ul></div>
    <div class="panel stack"><h2>الطلبات حسب المرحلة</h2><div class="bars">${counts.map((c,i)=>`<div class="bar"><span>${STAGES[i]}</span><span class="t"><i style="width:${c/mx*100}%"></i></span><span class="num">${c}</span></div>`).join('')}</div></div>
    <div class="stack" style="gap:8px"><h2>إنتاجية الخياطين</h2>${tailorTable()}</div></div>`;
 };
@@ -752,11 +788,11 @@ function orderDetail(o){
       <dl class="kv"><dt>القماش</dt><dd>${Object.keys(o.reserved).length?'محجوز '+Object.entries(o.reserved).map(([id,m])=>esc(fab(id).code)+' '+mtr(m)).join('، '):Object.keys(o.consumed).length?'مستهلك '+Object.entries(o.consumed).map(([id,m])=>esc(fab(id).code)+' '+mtr(m)).join('، '):'—'}</dd></dl></div>
     <div class="box"><h3>المقاسات والتسليم</h3><dl class="kv">
       <dt>الملف</dt><dd>${p?esc(p.name)+' · '+METHOD[p.method]:'—'}</dd>
-      <dt>الحالة</dt><dd>${o.measure.ready?'<span class="pill good">معتمدة</span>':'<span class="pill warn">غير معتمدة</span>'}</dd>
+      <dt>الحالة</dt><dd>${o.measure.ready?'<span class="pill good">معتمدة</span>':p?`<span class="pill ${MST[p.status][1]}">${MST[p.status][0]}</span>`:'<span class="pill warn">غير معتمدة</span>'}</dd>
       ${bk?`<dt>حجز المندوب</dt><dd><span class="pill ${BOOK[bk.status][1]}">${BOOK[bk.status][0]}</span></dd>`:''}
       <dt>التسليم</dt><dd>${o.delivery.type==='pickup'?'من المحل':esc(zone?zone.name:'توصيل')}</dd>
       <dt>حالة التسليم</dt><dd>${o.delivery.status==='delivered'?'تم '+fdt.format(o.delivery.date):'لم يُسلّم'}</dd></dl>
-      ${!o.measure.ready&&canPay&&!o.cancelled?(p&&p.method==='rep'&&(!bk||bk.status!=='approved')?'<p class="gate">اعتمد حجز المندوب أولاً.</p>':`<button class="btn sm" data-act="o-measure" data-id="${o.id}">${p&&p.method==='thobe'?'تم استلام الثوب واعتماد المقاسات':'اعتماد المقاسات'}</button>`):''}
+      ${p?`<button class="btn sm ${o.measure.ready?'ghost':''}" data-act="open-measure" data-id="${p.id}" style="align-self:flex-start">${o.measure.ready?'عرض المقاسات':'فتح ملف المقاسات'}</button>`:''}
       ${o.stage===8&&o.delivery.status!=='delivered'&&canPay?`<button class="btn sm" data-act="o-deliver" data-id="${o.id}">تسجيل التسليم الآن</button>`:''}</div>
     ${canPay?`<div class="box"><h3>الدفع</h3><dl class="kv">
       <dt>الإجمالي</dt><dd><b>${money(o.total)}</b></dd><dt>شرط البدء</dt><dd>${o.payMode==='deposit'?'عربون '+money(o.required):'دفع كامل'}</dd>
@@ -772,7 +808,8 @@ A.inventory=()=>{
   return `<div class="stack">
   ${low.length?`<p class="note warn">مخزون منخفض: ${low.map(f=>esc(f.code)+' '+esc(f.color)).join('، ')}</p>`:''}
   ${S.fabrics.map(f=>`<div class="panel stack" style="gap:6px"><div class="spread"><span class="row" style="gap:8px"><span style="width:16px;height:16px;border-radius:4px;background:${esc(f.hex)};border:1px solid var(--line)"></span><b>${esc(f.color)}</b><span class="code">${esc(f.code)}</span></span>${availBadge(f)}</div>
-    <dl class="kv"><dt>المخزون</dt><dd>${mtr(f.stock)}</dd><dt>محجوز للطلبات</dt><dd>${mtr(f.reserved)}</dd><dt>متاح</dt><dd><b>${mtr(avail(f))}</b> · يكفي ${Math.floor(avail(f)/S.settings.metersPerThobe)} ثوب</dd></dl></div>`).join('')}
+    <dl class="kv"><dt>المخزون</dt><dd>${mtr(f.stock)}</dd><dt>محجوز للطلبات</dt><dd>${mtr(f.reserved)}</dd><dt>متاح</dt><dd><b>${mtr(avail(f))}</b> · يكفي ${Math.floor(avail(f)/S.settings.metersPerThobe)} ثوب</dd></dl>
+    ${SES.role==='manager'?`<label class="spread" for="fs-${f.id}"><span class="muted small">يظهر للعملاء في</span><select id="fs-${f.id}" style="width:auto" data-path="fabrics.${f.id}.season" data-kind="text" data-label="قسم قماش ${esc(f.code)}">${Object.entries(SEASONS).map(([k,[t]])=>`<option value="${k}" ${seasonOf(f)===k?'selected':''}>${t}</option>`).join('')}</select></label>`:`<span class="muted small">${SEASONS[seasonOf(f)][0]}</span>`}</div>`).join('')}
   <div class="panel stack"><h2>تسجيل حركة مخزون</h2><div class="form-grid">
     <label class="fld" for="mv-f"><span>القماش</span><select id="mv-f">${S.fabrics.map(f=>`<option value="${f.id}">${esc(f.code)} ${esc(f.color)}</option>`).join('')}</select></label>
     <label class="fld" for="mv-t"><span>نوع الحركة</span><select id="mv-t"><option value="purchase">شراء (+)</option><option value="return">مرتجع (+)</option><option value="waste">هدر (−)</option><option value="adjust">تسوية جرد (±)</option></select></label>
@@ -787,6 +824,7 @@ A.inventory=()=>{
     <label class="fld" for="nf-color"><span>اسم اللون</span><input type="text" id="nf-color"></label>
     <label class="fld" for="nf-hex"><span>لون المعاينة</span><input type="color" id="nf-hex" value="#e8e6e0" style="width:100%;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--surface)"></label>
     <label class="fld" for="nf-price"><span>سعر القماش للثوب</span><input type="number" id="nf-price" min="0" step="1"></label>
+    <label class="fld" for="nf-season"><span>القسم</span><select id="nf-season">${Object.entries(SEASONS).map(([k,[t]])=>`<option value="${k}">${t}</option>`).join('')}</select></label>
     <button class="btn full" data-act="inv-add">إضافة</button></div></div>`:''}
   <div class="panel stack"><h2>آخر الحركات</h2><ul class="log">${S.log.filter(l=>l.kind==='مخزون').slice(0,12).map(logLi).join('')||'<li class="muted">لا توجد حركات.</li>'}</ul></div></div>`;
 };
@@ -825,15 +863,109 @@ A.more=()=>{const extra=ROLE_TABS[SES.role].filter(k=>!adminNav().includes(k));
   <div class="list"><button data-act="logout">${IC.out}<span class="grow">تسجيل الخروج</span></button></div>
   <p class="note demo">نسخة تجريبية لتجربة الصلاحيات. سجّل الخروج لتجربة دور آخر.</p></div>`};
 
+/* ---------- staff: measurement records ---------- */
+const MST={awaiting:['بانتظار أخذ المقاسات','warn'],review:['بانتظار الاعتماد','acc'],approved:['معتمدة','good'],rejected:['تحتاج تعديل','bad']};
+const who=()=>`${ROLES[SES.role]} · ${SES.phone}`;
+const canEnterMs=()=>['manager','staff','rep','tailor'].includes(SES.role);
+const canApproveMs=()=>['manager','staff'].includes(SES.role);
+const msOrders=p=>S.orders.filter(o=>o.profileId===p.id&&!o.cancelled);
+const msLocked=p=>msOrders(p).some(o=>o.stage>=2);
+// Full tailoring sheet for staff: every item a tailor records, grouped as on a tailor's card.
+// [key, label, hint, min, max, required]
+const MSHEET=[
+ ['الطول',[
+  ['length','طول الثوب من الأمام','من أعلى الكتف عند الرقبة حتى الكعب',100,175,1],
+  ['length_back','طول الثوب من الخلف','من أسفل الياقة خلفاً حتى الكعب',100,180,0]]],
+ ['الياقة والصدر',[
+  ['neck','محيط الرقبة (الياقة)','حول قاعدة الرقبة مع ترك إصبع',32,52,1],
+  ['collar_h','ارتفاع الياقة','ارتفاع الياقة المطلوب',2,7,0],
+  ['placket','طول الجبزور','طول فتحة الصدر من الياقة',15,45,0],
+  ['shoulder','عرض الكتف','من طرف الكتف إلى الآخر من الخلف',35,62,1],
+  ['chest','محيط الصدر','حول أعرض جزء من الصدر تحت الإبط',75,160,1],
+  ['armhole','محيط الإبط','حول فتحة الإبط',35,65,1]]],
+ ['الوسط والأسفل',[
+  ['waist','محيط الخصر (البطن)','حول البطن عند مستوى السرة',65,160,1],
+  ['hips','محيط الحوض','حول أعرض جزء من الحوض',75,170,1],
+  ['hem','وسع أسفل الثوب','محيط الثوب عند الذيل',90,220,1]]],
+ ['الأكمام',[
+  ['sleeve','طول الكم','من طرف الكتف حتى عظمة المعصم',45,75,1],
+  ['bicep','محيط الزند','حول أعرض جزء من أعلى الذراع',22,55,1],
+  ['elbow','محيط الكوع','حول الكوع والذراع مثنية قليلاً',20,50,0],
+  ['wrist','محيط المعصم','حول المعصم فوق العظمة',13,26,1],
+  ['cuff','عرض الكبك','عرض شريط الكبك المطلوب',3,12,0]]]];
+const MS_ALL=MSHEET.flatMap(([,f])=>f);
+const FITS={regular:'عادي',slim:'ضيق',loose:'واسع'};
+function msFields(p,prefix){let n=0;const v=(p&&p.values)||{};
+  return MSHEET.map(([g,fs])=>`<h3 class="ms-group">${g}</h3><div class="ms-sheet">${fs.map(([k,l,hint,mn,mx,req])=>`<label class="ms-row" for="${prefix}-${k}"><b class="n">${++n}</b><span class="t"><span class="l">${l}${req?'':' <em class="opt">اختياري</em>'}</span><small>${hint}</small></span><span class="in"><input type="number" id="${prefix}-${k}" min="${mn}" max="${mx}" step="0.5" inputmode="decimal" value="${v[k]!=null?v[k]:''}" aria-label="${l}"><i>سم</i></span></label>`).join('')}</div>`).join('')
+  +`<h3 class="ms-group">التفصيل</h3><div class="m-fields"><label class="fld" for="${prefix}-fit"><span>القَصّة</span><select id="${prefix}-fit">${Object.entries(FITS).map(([k,l])=>`<option value="${k}" ${(p&&p.fit||'regular')===k?'selected':''}>${l}</option>`).join('')}</select><small>مدى وسع الثوب على الجسم</small></label>
+    <label class="fld" for="${prefix}-tnote" style="grid-column:1/-1"><span>ملاحظات الخياط <em class="opt">اختياري</em></span><textarea id="${prefix}-tnote" placeholder="مثلاً: الكتف الأيمن أنزل قليلاً، يفضّل الكم أطول بنصف سم">${esc(p&&p.tailorNote||'')}</textarea></label></div>`}
+function readMs(prefix){const v={};for(const[k,l,,mn,mx,req]of MS_ALL){const raw=$(`#${prefix}-${k}`).value.trim();if(!raw&&!req)continue;const x=parseFloat(raw);
+  if(!(x>=mn&&x<=mx)){toast(`${l}: أدخل قيمة بين ${mn} و${mx} سم`,'bad');$(`#${prefix}-${k}`).focus();return null}v[k]=x}
+  return{values:v,fit:$(`#${prefix}-fit`).value,tailorNote:$(`#${prefix}-tnote`).value.trim()}}
+function msValuesBox(p){const v=p.values||{};
+  return MSHEET.map(([g,fs])=>{const rows=fs.filter(([k])=>v[k]!=null);return rows.length?`<h3 class="ms-group">${g}</h3><dl class="kv">${rows.map(([k,l])=>`<dt>${l}</dt><dd><span class="num">${v[k]}</span> سم</dd>`).join('')}</dl>`:''}).join('')
+   +(p.fit?`<dl class="kv"><dt>القَصّة</dt><dd>${FITS[p.fit]||'عادي'}</dd></dl>`:'')+(p.tailorNote?`<p class="note" style="margin:0">ملاحظات الخياط: ${esc(p.tailorNote)}</p>`:'')}
+
+function syncMsOrders(p){msOrders(p).filter(o=>o.stage<=1).forEach(o=>{o.measure.ready=p.status==='approved'})}
+function msDetail(p){
+  const bk=p.bookingId?S.bookings.find(b=>b.id===p.bookingId):null,ords=msOrders(p),locked=msLocked(p);
+  const repGate=p.method==='rep'&&(!bk||bk.status!=='approved');
+  const hasVals=MFIELDS.every(([k])=>p.values&&p.values[k]>0);
+  let body='';
+  if(hasVals)body+=`<div class="box"><h3>المقاسات المسجّلة</h3>${msValuesBox(p)}
+    ${p.enteredBy?`<span class="muted small">سجّلها: ${esc(p.enteredBy)} · ${fdt.format(p.enteredAt)}</span>`:''}
+    ${p.approvedBy&&p.status==='approved'?`<span class="muted small">اعتمدها: ${esc(p.approvedBy)} · ${fdt.format(p.approvedAt)}</span>`:''}</div>`;
+  if(p.status==='rejected'&&p.note)body+=`<p class="note bad">سبب الإعادة: ${esc(p.note)}</p>`;
+  if(p.status==='review'&&canApproveMs()&&!locked)body+=ui.confirm==='rej-'+p.id
+    ?`<div class="box"><label class="fld" for="rej-${p.id}"><span>سبب إعادة المقاسات للتعديل</span><textarea id="rej-${p.id}" placeholder="مثلاً: طول الكم غير منطقي، أعد القياس"></textarea></label>
+       <div class="row"><button class="btn danger sm" data-act="ms-reject" data-id="${p.id}">إعادة للتعديل</button><button class="btn ghost sm" data-act="confirm-no">تراجع</button></div></div>`
+    :`<div class="row"><button class="btn" data-act="ms-approve" data-id="${p.id}">اعتماد المقاسات</button><button class="btn ghost" data-act="ms-reject-ask" data-id="${p.id}">إعادة للتعديل</button></div>`;
+  if(canEnterMs()&&!locked&&p.status!=='approved'){
+    if(repGate)body+=`<p class="gate">حجز زيارة المندوب لم يُعتمد بعد. اعتمده من «حجوزات المندوبين» ثم سجّل المقاسات.</p>`;
+    else if(ui.confirm==='edit-'+p.id||p.status==='awaiting'||p.status==='rejected')body+=`<div class="box"><h3>${hasVals?'تعديل المقاسات':'تسجيل المقاسات'}</h3>
+      ${p.method==='thobe'?'<p class="muted small" style="margin:0">قِس الثوب المستلم من العميل وأدخل القيمة مقابل كل بند.</p>':p.method==='rep'?'<p class="muted small" style="margin:0">أدخل المقاسات التي أخذتها في الزيارة.</p>':''}
+      ${msFields(p,'ms-'+p.id)}<button class="btn" data-act="ms-save" data-id="${p.id}">حفظ وإرسال للاعتماد</button></div>`;
+    else if(p.status==='review')body+=`<button class="link" data-act="ms-edit" data-id="${p.id}" style="align-self:flex-start">تعديل القيم قبل الاعتماد</button>`;
+  }
+  if(p.status==='approved'&&canEnterMs()&&!locked)body+=ui.confirm==='edit-'+p.id
+    ?`<div class="box"><h3>تعديل مقاسات معتمدة</h3><p class="muted small" style="margin:0">التعديل يعيدها لانتظار الاعتماد.</p>${msFields(p,'ms-'+p.id)}<button class="btn" data-act="ms-save" data-id="${p.id}">حفظ وإرسال للاعتماد</button></div>`
+    :`<button class="link" data-act="ms-edit" data-id="${p.id}" style="align-self:flex-start">تعديل المقاسات</button>`;
+  if(locked)body+=`<p class="muted small" style="margin:0">لا يمكن تعديل المقاسات بعد بدء تنفيذ طلب مرتبط بها.</p>`;
+  body+=`<dl class="kv">${bk?`<dt>زيارة المندوب</dt><dd><span class="num">${esc(bk.date)}</span> · <span class="num">${esc(bk.slot)}</span><br><span class="small">${esc(bk.address)}</span></dd>`:''}
+    <dt>الطلبات المرتبطة</dt><dd>${ords.length?ords.map(o=>`<span class="ref">${o.ref}</span>`).join('، '):'لا يوجد'}</dd></dl>`;
+  if(p.history&&p.history.length)body+=`<div class="box"><h3>السجل</h3><ul class="log">${p.history.slice().reverse().map(h=>`<li><span class="meta"><time class="num">${fdt.format(h.t)}</time></span><span>${esc(h.text)}</span></li>`).join('')}</ul></div>`;
+  return `<div class="od">${body}</div>`;
+}
+A.measures=()=>{
+  const F={review:['بانتظار الاعتماد',p=>p.status==='review'],awaiting:['بانتظار الأخذ',p=>p.status==='awaiting'],rejected:['تحتاج تعديل',p=>p.status==='rejected'],approved:['معتمدة',p=>p.status==='approved'],all:['الكل',()=>true]};
+  if(!F[ui.msFilter])ui.msFilter='review';
+  const list=[...S.profiles].sort((a,b)=>(b.updated||0)-(a.updated||0)),shown=list.filter(F[ui.msFilter][1]);
+  return `<div class="stack">
+   ${canEnterMs()?(ui.confirm==='ms-new'?`<div class="panel stack"><h2>تسجيل مقاسات عميل</h2><div class="form-grid">
+      <label class="fld" for="mn-owner"><span>اسم العميل</span><input type="text" id="mn-owner"></label>
+      <label class="fld" for="mn-phone"><span>جوال العميل</span><input type="tel" id="mn-phone" inputmode="numeric" placeholder="5XXXXXXXX"></label>
+      <label class="fld full" for="mn-name"><span>اسم الملف</span><input type="text" id="mn-name" placeholder="مثلاً: مقاسات المحل"></label></div>
+      ${msFields(null,'mn')}<div class="row"><button class="btn" data-act="ms-new-save">حفظ وإرسال للاعتماد</button><button class="btn ghost" data-act="confirm-no">إلغاء</button></div></div>`
+     :`<button class="btn ghost wide" data-act="ms-new">+ تسجيل مقاسات عميل</button>`):''}
+   <div class="subtabs">${Object.entries(F).map(([k,[l,f]])=>`<button data-act="ms-filter" data-id="${k}" aria-pressed="${ui.msFilter===k}">${l} <span class="num">${list.filter(f).length}</span></button>`).join('')}</div>
+   <div class="orders">${shown.map(p=>{const open=ui.openMeasure===p.id,st=MST[p.status];
+     return `<article class="order ${p.status==='approved'?'is-done':p.status==='rejected'?'is-late':''}">
+      <button class="order-row" data-act="ms-open" data-id="${p.id}" aria-expanded="${open}">
+        <b>${esc(p.owner||'عميل')}</b><span class="pill ${st[1]}">${st[0]}</span>
+        <span class="small muted">${esc(p.name)} · ${METHOD[p.method]}${p.phone?` · <span class="num">${esc(p.phone)}</span>`:''}</span><span class="small muted" style="text-align:end">${fdate.format(p.updated||Date.now())}</span>
+      </button>${open?msDetail(p):''}</article>`}).join('')||'<p class="empty">لا توجد ملفات مقاسات هنا.</p>'}</div>
+  </div>`;
+};
+
 /* ---------- navigation ---------- */
 const CUST_NAV=[['home','الرئيسية',IC.home],['store','الأقمشة',IC.fabric],['design','التصميم',IC.design],['cart','السلة',IC.bag],['account','حسابي',IC.user]];
-const ADM_ICON={overview:IC.chart,orders:IC.list,inventory:IC.box,reps:IC.cal,more:IC.more};
-const ADM_LABEL={overview:'نظرة عامة',orders:'الطلبات',inventory:'المخزون',reps:'المندوبون',more:'المزيد'};
-function adminNav(){const t=ROLE_TABS[SES.role];return['overview','orders','inventory','reps'].filter(k=>t.includes(k))}
+const ADM_ICON={overview:IC.chart,orders:IC.list,measures:IC.ruler,inventory:IC.box,reps:IC.cal,more:IC.more};
+const ADM_LABEL={overview:'نظرة عامة',orders:'الطلبات',measures:'المقاسات',inventory:'المخزون',reps:'المندوبون',more:'المزيد'};
+function adminNav(){const t=ROLE_TABS[SES.role];return['overview','orders','measures','inventory','reps'].filter(k=>t.includes(k)).slice(0,4)}
 function titleFor(){
   if(isStaff()){if(ui.sub)return ATABS[ui.sub];return ui.tab==='more'?'المزيد':ATABS[ui.tab]}
   if(ui.sub==='orders')return'طلباتي';if(ui.sub==='measure')return'المقاسات';
-  if(ui.sub&&ui.sub.startsWith('order:'))return'تفاصيل الطلب';if(ui.sub&&ui.sub.startsWith('fabric:'))return'القماش';
+  if(ui.sub&&ui.sub.startsWith('order:'))return'تفاصيل الطلب';if(ui.sub&&ui.sub.startsWith('fabric:'))return'القماش';if(ui.sub&&ui.sub.startsWith('season:'))return SEASONS[ui.sub.slice(7)][0];
   return{home:'غرز',store:'الأقمشة',design:'تصميم الثوب',cart:'السلة',account:'حسابي'}[ui.tab];
 }
 function screen(){
@@ -841,6 +973,7 @@ function screen(){
   if(ui.sub==='orders')return V.orders();if(ui.sub==='measure')return V.measure();
   if(ui.sub&&ui.sub.startsWith('order:'))return V.order(ui.sub.slice(6));
   if(ui.sub&&ui.sub.startsWith('fabric:'))return V.fabric(ui.sub.slice(7));
+  if(ui.sub&&ui.sub.startsWith('season:'))return V.season(ui.sub.slice(7));
   return V[ui.tab]();
 }
 function render(){
@@ -853,7 +986,7 @@ function render(){
      ${ui.sub?`<button class="icon-btn" data-act="back" aria-label="رجوع">${IC.back}</button>`:''}
      <h1>${esc(titleFor())}</h1><span class="demo-badge">${isStaff()?ROLES[SES.role]+' · ':''}تجريبي</span></div></header>
    <main class="pad ${nav.length<2?'no-nav':''}">${screen()}</main>
-   ${nav.length>1?`<nav class="tabbar" aria-label="التنقل"><div class="in">${nav.map(([k,l,ic])=>`<button data-act="go" data-id="${k}" aria-current="${ui.tab===k?'page':'false'}">${ic}<span>${l}</span>${k==='cart'&&cartN?`<span class="badge num">${cartN}</span>`:''}</button>`).join('')}</div></nav>`:''}`;
+   ${nav.length>1?`<nav class="tabbar" aria-label="التنقل"><div class="in">${nav.map(([k,l,ic])=>`<button data-act="go" data-id="${k}" aria-current="${ui.tab===k?'page':'false'}">${ic}<span>${l}</span>${k==='cart'&&cartN?`<span class="badge num">${cartN}</span>`:''}${k==='measures'&&isStaff()&&canApproveMs()&&S.profiles.some(p=>p.status==='review')?`<span class="badge num">${S.profiles.filter(p=>p.status==='review').length}</span>`:''}</button>`).join('')}</div></nav>`:''}`;
 }
 
 /* ---------- actions ---------- */
@@ -869,9 +1002,10 @@ const ACT={
    log('دخول',`تسجيل دخول ${SES.role==='customer'?'عميل':ROLES[SES.role]} ‎+966${SES.phone}`);save();toTop()},
  logout:()=>{SES=null;saveSes();ui.login={step:'phone',phone:'',role:'manager'};toTop()},
  go:(id,b)=>{ui.tab=id;ui.sub=b.dataset.sub||null;if(b.dataset.m)ui.mMethod=b.dataset.m;if(id!=='cart')ui.lastOrder=null;ui.confirm=null;toTop()},
- back:()=>{if(!isStaff()&&ui.sub&&ui.sub.startsWith('order:')&&ui.tab==='account')ui.sub='orders';else ui.sub=null;toTop()},
+ back:()=>{if(ui.backTo&&ui.sub&&ui.sub.startsWith('fabric:')){ui.sub=ui.backTo;ui.backTo=null;toTop();return}if(!isStaff()&&ui.sub&&ui.sub.startsWith('order:')&&ui.tab==='account')ui.sub='orders';else ui.sub=null;toTop()},
  'open-order':id=>{ui.tab='account';ui.sub='order:'+id;toTop()},
- 'fabric-sheet':id=>{ui.sub='fabric:'+id;toTop()},
+ 'fabric-sheet':id=>{ui.backTo=ui.sub&&ui.sub.startsWith('season:')?ui.sub:null;ui.sub='fabric:'+id;toTop()},
+ season:id=>{ui.tab='home';ui.sub='season:'+id;toTop()},
  'design-fabric':id=>{ui.d=newDraft(id);ui.tab='design';ui.sub=null;toTop()},
  'd-fabric':id=>{ui.d.fabricId=id;toTop()},
  'd-refab':()=>{ui.d.fabricId=null;toTop()},
@@ -886,12 +1020,12 @@ const ACT={
  'm-save':()=>{
    const name=$('#m-name').value.trim()||'ملف مقاسات '+(S.profiles.length+1),now=Date.now();
    if(ui.mMethod==='manual'){const values={};for(const[k,l,,mn,mx]of MFIELDS){const v=parseFloat($('#m-'+k).value);if(!(v>=mn&&v<=mx))return toast(`${l}: أدخل قيمة بين ${mn} و${mx} سم`,'bad');values[k]=v}
-     S.profiles.push({id:'p'+now,name,method:'manual',values,updated:now});log('مقاسات',`ملف مقاسات يدوي جديد «${name}»`)}
-   else if(ui.mMethod==='thobe'){S.profiles.push({id:'p'+now,name,method:'thobe',values:{},taken:false,updated:now});log('مقاسات',`ملف «${name}» بانتظار استلام ثوب سابق`)}
+     S.profiles.push({id:'p'+now,name,owner:'عميل تجريبي',phone:SES.phone,method:'manual',values,status:'review',enteredBy:'العميل',enteredAt:now,updated:now,history:[{t:now,text:'سجّل المقاسات: العميل'}]});log('مقاسات',`ملف مقاسات يدوي جديد «${name}» بانتظار الاعتماد`)}
+   else if(ui.mMethod==='thobe'){S.profiles.push({id:'p'+now,name,owner:'عميل تجريبي',phone:SES.phone,method:'thobe',values:{},status:'awaiting',updated:now,history:[]});log('مقاسات',`ملف «${name}» بانتظار استلام ثوب سابق`)}
    else{const addr=$('#b-addr').value.trim(),date=$('#b-date').value;if(!addr)return toast('أدخل العنوان','bad');if(!date||date<new Date(now+D).toISOString().slice(0,10))return toast('اختر تاريخاً من الغد فصاعداً','bad');
      const b={id:'b'+now,city:$('#b-city').value,address:addr,date,slot:$('#b-slot').value,status:'pending',created:now};S.bookings.push(b);
-     S.profiles.push({id:'p'+now,name,method:'rep',values:{},taken:false,bookingId:b.id,updated:now});log('حجز',`طلب زيارة مندوب ${b.city} ${date} ${b.slot}`)}
-   save();toTop();toast(ui.mMethod==='rep'?'أُرسل طلب الحجز، بانتظار موافقة الإدارة':'حُفظ ملف المقاسات')},
+     S.profiles.push({id:'p'+now,name,owner:'عميل تجريبي',phone:SES.phone,method:'rep',values:{},status:'awaiting',bookingId:b.id,updated:now,history:[]});log('حجز',`طلب زيارة مندوب ${b.city} ${date} ${b.slot}`)}
+   save();toTop();toast(ui.mMethod==='rep'?'أُرسل طلب الحجز، بانتظار موافقة الإدارة':ui.mMethod==='manual'?'أُرسلت المقاسات للمراجعة':'حُفظ ملف المقاسات')},
  pay:()=>{
    const lines=cartLines(),need={};lines.forEach(l=>need[l.fabricId]=r2((need[l.fabricId]||0)+l.meters));
    for(const id in need){const f=fab(id);if(avail(f)<need[id])return toast(`الكمية المتاحة من ${f.code} لا تكفي`,'bad')}
@@ -904,6 +1038,25 @@ const ACT={
    S.cart=[];ui.lastOrder=o.id;save();toTop()},
  'toggle-order':id=>{ui.openOrder=ui.openOrder===id?null:id;ui.confirm=null},
  'o-filter':id=>{ui.oFilter=id},
+ 'ms-filter':id=>{ui.msFilter=id;ui.openMeasure=null;ui.confirm=null},
+ 'ms-open':id=>{ui.openMeasure=ui.openMeasure===id?null:id;ui.confirm=null},
+ 'ms-new':()=>{ui.confirm='ms-new'},
+ 'ms-edit':id=>{ui.confirm='edit-'+id},
+ 'ms-reject-ask':id=>{ui.confirm='rej-'+id},
+ 'ms-save':id=>{const p=S.profiles.find(x=>x.id===id);if(msLocked(p))return toast('بدأ تنفيذ طلب مرتبط، لا يمكن التعديل','bad');const r=readMs('ms-'+id);if(!r)return false;
+   const now=Date.now();Object.assign(p,{values:r.values,fit:r.fit,tailorNote:r.tailorNote,status:'review',enteredBy:who(),enteredAt:now,updated:now,note:''});p.history.push({t:now,text:`سجّل المقاسات: ${who()}`});
+   syncMsOrders(p);ui.confirm=null;log('مقاسات',`${p.owner||'عميل'} «${p.name}»: تسجيل مقاسات بواسطة ${who()}`);save();toast('أُرسلت المقاسات للاعتماد')},
+ 'ms-approve':id=>{const p=S.profiles.find(x=>x.id===id);if(p.status!=='review')return;const now=Date.now();
+   Object.assign(p,{status:'approved',approvedBy:who(),approvedAt:now,updated:now,taken:true});p.history.push({t:now,text:`اعتمد المقاسات: ${who()}`});
+   syncMsOrders(p);log('مقاسات',`${p.owner||'عميل'} «${p.name}»: اعتماد المقاسات بواسطة ${who()}`);save();toast('اعتُمدت المقاسات')},
+ 'ms-reject':id=>{const p=S.profiles.find(x=>x.id===id),r=$('#rej-'+id).value.trim();if(!r)return toast('اكتب سبب الإعادة','bad');const now=Date.now();
+   Object.assign(p,{status:'rejected',note:r,updated:now});p.history.push({t:now,text:`أعاد المقاسات للتعديل: ${who()} — ${r}`});
+   syncMsOrders(p);ui.confirm=null;log('مقاسات',`${p.owner||'عميل'} «${p.name}»: إعادة للتعديل — ${r}`);save()},
+ 'ms-new-save':()=>{const owner=$('#mn-owner').value.trim();let ph=$('#mn-phone').value.replace(/\D/g,'');if(ph.startsWith('0'))ph=ph.slice(1);
+   if(!owner)return toast('أدخل اسم العميل','bad');if(!/^5\d{8}$/.test(ph))return toast('أدخل جوال العميل (9 أرقام يبدأ بـ 5)','bad');const r=readMs('mn');if(!r)return false;const now=Date.now();
+   const p={id:'p'+now,name:$('#mn-name').value.trim()||'مقاسات المحل',owner,phone:ph,method:'manual',values:r.values,fit:r.fit,tailorNote:r.tailorNote,status:'review',enteredBy:who(),enteredAt:now,updated:now,history:[{t:now,text:`سجّل المقاسات: ${who()}`}]};
+   S.profiles.push(p);ui.confirm=null;ui.msFilter='review';ui.openMeasure=p.id;log('مقاسات',`${owner}: ملف مقاسات جديد بواسطة ${who()}`);save();toast('أُرسلت المقاسات للاعتماد')},
+ 'open-measure':id=>{ui.tab=adminNav().includes('measures')?'measures':'more';ui.sub=adminNav().includes('measures')?null:'measures';ui.msFilter='all';ui.openMeasure=id;ui.confirm=null;toTop()},
  'o-measure':id=>{const o=ord(id),p=S.profiles.find(x=>x.id===o.profileId);if(p&&p.method==='manual'&&!profileReady(p))return toast('ملف المقاسات ناقص','bad');o.measure.ready=true;if(p&&p.method!=='manual'){p.taken=true;p.updated=Date.now()}log('طلب',`${o.ref}: اعتماد المقاسات (${p?METHOD[p.method]:''})`);save()},
  'o-pay':id=>{const o=ord(id),v=H(parseFloat($('#pay-'+id).value)),rem=o.total-o.paid;if(!(v>0))return toast('أدخل مبلغاً صحيحاً','bad');if(v>rem)return toast('المبلغ أكبر من المتبقي','bad');
    o.paid+=v;o.payments.push({t:Date.now(),amount:v,note:v===rem?'سداد المتبقي':'دفعة جزئية'});log('دفع',`${o.ref}: استلام ${(v/100).toFixed(2)} ر.س، المتبقي ${((rem-v)/100).toFixed(2)} ر.س`);save();toast('سُجّلت الدفعة')},
@@ -933,7 +1086,7 @@ const ACT={
    const L={purchase:'شراء',return:'مرتجع',waste:'هدر',adjust:'تسوية'};f.stock=ns;log('مخزون',`${L[type]} ${f.code}: ${delta>0?'+':''}${delta} م، الرصيد ${ns} م${note?' — '+note:''}`);save();toast('سُجّلت الحركة')},
  'inv-add':()=>{const g=k=>$('#nf-'+k).value.trim(),code=g('code').toUpperCase(),price=parseFloat(g('price'));
    if(!code||!g('brand')||!g('type')||!g('color'))return toast('أكمل كل الحقول','bad');if(S.fabrics.some(f=>f.code===code))return toast('الرمز مستخدم','bad');if(!(price>=0))return toast('أدخل السعر','bad');
-   S.fabrics.push({id:'f'+Date.now(),code,brand:g('brand'),type:g('type'),color:g('color'),hex:$('#nf-hex').value,price,stock:0,reserved:0,desc:'وصف تجريبي.',specs:{}});log('مخزون',`إضافة قماش ${code} بمخزون 0 م`);save();toast('أُضيف القماش. سجّل شراء لإضافة الكمية')},
+   S.fabrics.push({id:'f'+Date.now(),season:$('#nf-season').value,code,brand:g('brand'),type:g('type'),color:g('color'),hex:$('#nf-hex').value,price,stock:0,reserved:0,desc:'وصف تجريبي.',specs:{}});log('مخزون',`إضافة قماش ${code} بمخزون 0 م`);save();toast('أُضيف القماش. سجّل شراء لإضافة الكمية')},
  't-add':()=>{const n=$('#nt').value.trim();if(!n)return toast('أدخل الاسم','bad');S.tailors.push({id:'t'+Date.now(),name:n});log('نظام',`إضافة الخياط ${n}`);save()},
  'b-ok':id=>{const b=S.bookings.find(x=>x.id===id);b.status='approved';log('حجز',`تأكيد زيارة ${b.date} ${b.slot}`);save()},
  'b-no':id=>{const b=S.bookings.find(x=>x.id===id);b.status='rejected';log('حجز',`رفض زيارة ${b.date} ${b.slot}`);save()},
@@ -951,11 +1104,12 @@ const CH={
  qc:t=>{const o=ord(t.dataset.id);o.qc=t.value;log('طلب',`${o.ref}: ملاحظة فحص الجودة`);save()},
  logf:t=>{ui.logF=t.value}
 };
-document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const f=ACT[b.dataset.act];if(!f)return;f(b.dataset.id,b,e);render()});
-document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;if(e.target.id==='ph'){ACT['login-send']();render()}else if(e.target.id==='otp'){ACT['otp-verify']();render()}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const f=ACT[b.dataset.act];if(!f)return;if(f(b.dataset.id,b,e)!==false)render()});
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;if(e.target.id==='ph'){if(ACT['login-send']()!==false)render()}else if(e.target.id==='otp'){if(ACT['otp-verify']()!==false)render()}});
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.path){let v;
     if(t.type==='checkbox')v=t.checked;
+    else if(t.dataset.kind==='text'){v=t.value}
     else if(t.dataset.kind==='lines'){v=t.value.split('\n').map(x=>x.trim()).filter(Boolean);if(!v.length){toast('أدخل موعداً واحداً على الأقل','bad');return render()}}
     else{v=parseFloat(t.value);if(!isFinite(v)||v<0||(t.max&&v>+t.max)||(t.dataset.path==='settings.depositPct'&&v<1)||(t.dataset.path==='settings.metersPerThobe'&&v<=0)||(t.dataset.path==='settings.dueDays'&&(v<1||v!==Math.round(v)))){toast('قيمة غير صحيحة','bad');return render()}}
     const old=setPath(t.dataset.path,v);log('إعدادات',`${t.dataset.label}: ${Array.isArray(old)?old.join('، '):old} ← ${Array.isArray(v)?v.join('، '):v}`);save();toast('حُفظ التغيير');return render()}
