@@ -214,6 +214,12 @@ dl.specs dd{margin:0}
 .season b{font-size:1rem}
 .season small{color:var(--muted);font-size:.76rem;line-height:1.4}
 .season .cnt{margin-top:4px;font-size:.76rem;color:var(--gold);font-weight:600}
+.swatch.split,.sw.split{background:linear-gradient(90deg,var(--sw) 0 50%,var(--sw2) 50% 100%)!important}
+.dots{display:flex;gap:10px;flex-wrap:wrap;font-size:.74rem;color:var(--muted)}
+.dots span{display:inline-flex;align-items:center;gap:4px}
+.dots i,.dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid var(--line);vertical-align:middle}
+.seg .dot{margin-inline-end:6px}
+.fab-origin{font-size:.76rem;color:var(--gold);font-weight:600}
 /* design steps */
 .steps{display:flex;gap:6px}
 .steps>*{flex:1;text-align:center;padding:7px 6px;border-radius:999px;background:var(--sunk);color:var(--muted);font-size:.82rem;font-weight:500;border:0;cursor:pointer}
@@ -398,7 +404,11 @@ const avail=f=>r2(f.stock-f.reserved);
 function log(kind,text){S.log.unshift({t:Date.now(),kind,text});if(S.log.length>400)S.log.length=400}
 function unitPrice(it){const f=fab(it.fabricId);let p=H(S.settings.basePrice)+H(f.price);for(const[g]of GROUPS)p+=H(opt(g,it.opts[g]).price);return p}
 function optSummary(o){const p=['ياقة '+opt('collar',o.collar).name,o.sleeve==='s1'?'كم عادي':opt('sleeve',o.sleeve).name,opt('closure',o.closure).name,'جيب أمامي '+opt('front',o.front).name];if(o.right==='r1')p.push('جيب داخلي يمين');if(o.left==='l1')p.push('جيب داخلي يسار');return p.join('، ')}
-function totals(items,fee){const sub=items.reduce((a,it)=>a+it.unit*it.qty,0);const vat=Math.round((sub+fee)*S.settings.vatPct/100);return{sub,vat,total:sub+fee+vat}}
+// Prices shown are what the customer pays. With vatIncluded the tax is already inside the price and only shown for the invoice.
+function totals(items,fee){const sub=items.reduce((a,it)=>a+it.unit*it.qty,0),pct=S.settings.vatPct;
+  if(S.settings.vatIncluded){const total=sub+fee;return{sub,vat:Math.round(total*pct/(100+pct)),total,incl:true}}
+  const vat=Math.round((sub+fee)*pct/100);return{sub,vat,total:sub+fee+vat}}
+const vatRow=(vat,incl)=>incl?`<span class="muted small">شامل ضريبة القيمة المضافة ${S.settings.vatPct}%</span><span class="muted small">${money(vat)}</span>`:`<span>ضريبة القيمة المضافة ${S.settings.vatPct}%</span><span>${money(vat)}</span>`;
 function required(total,mode){return mode==='deposit'?Math.round(total*S.settings.depositPct/100):total}
 function profileReady(p){return !!p&&p.status==='approved'}
 function addWorkDays(ts,n){const d=new Date(ts);let c=0;while(c<n){d.setDate(d.getDate()+1);const w=d.getDay();if(w!==5&&w!==6)c++}return d.getTime()}
@@ -408,12 +418,40 @@ const installable=()=>{try{return !!document.querySelector('link[rel="manifest"]
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
 const SEASONS={summer:['الأقمشة الصيفية','خفيفة وباردة لأيام الحر'],winter:['الأقمشة الشتوية','أدفأ وأثقل لأيام البرد']};
 const seasonOf=f=>f.season||(/صوف/.test(f.type||'')?'winter':'summer');
+const REAL_SUMMER=[
+ ['rc221','RC-221','ريتشي 221','الياباني','اليابان','ألياف القطن والبوليستر المعالج','ربع وقفة','قماش ربع وقفة رجالي صيفي مصنوع من ألياف القطن والبوليستر المعالج، متوسط الوزن، ناعم ورسمي، مقاوم للتجعد.'],
+ ['ba777','BA-777','بريق الأقطان 777','الياباني الفاخر','اليابان','قطن معالج فاخر','ربع وقفة','قماش ربع وقفة رجالي يمنحك إحساس الألياف الطبيعية الفاخرة على البشرة، بارد جداً ومثالي للأجواء الصيفية الحارة، مقاوم للتجعد.'],
+ ['arnkh','AR-NKH','أربينو (ARENO) رداء النخبة','الياباني','اليابان','بوليستر 100%','ربع وقفة','قماش ربع وقفة رجالي فاخر يجمع بين كشخة المظهر والراحة اليومية، مقاوم للتجعد.'],
+ ['arghl','AR-GHL','أربينو (ARENO) الغالي','الياباني','اليابان','بوليستر 100%','ربع وقفة','قماش ربع وقفة رجالي ناعم وخفيف جداً، مقاوم للتجعد.'],
+ ['arost','AR-OST','أربينو (ARENO) الأسطورة','الياباني','اليابان','بوليستر 100%','ربع وقفة','قماش ربع وقفة رجالي انسيابي بارد فائق النعومة، مصمم لمن يبحث عن الخفة المطلقة والراحة، مقاوم للتجعد.'],
+ ['rf747','RF-747','ريفلكشن 747 (سميراميس)','الكوري','كوريا','بوليستر وقطن معالج','طايح','قماش بقوام طايح رجالي صيفي فاخر يجمع بين الفخامة الكورية والراحة اليومية، مع مقاومة عالية للتجعد والتكسير.']];
+const REAL_PRICES={rc221:280,ba777:245,arnkh:245,arghl:245,arost:245,rf747:230};
+const REAL_COLORS=[['W','أبيض','#f8f8f5'],['S','سكري','#efe5cf']];
+function addRealSummer(S){
+  ['f1','f2','f3','f4'].forEach(id=>{const f=S.fabrics.find(x=>x.id===id);if(f)f.active=false});
+  for(const [g,code,name,label,origin,weave,stance,desc] of REAL_SUMMER)for(const [c,color,hex] of REAL_COLORS){
+    const id='r-'+g+'-'+c;if(S.fabrics.some(f=>f.id===id))continue;
+    S.fabrics.push({id,group:'g-'+g,season:'summer',active:true,code:code+'-'+c,name,label,brand:origin,type:weave,color,hex,price:REAL_PRICES[g],stock:100,reserved:0,desc,
+      specs:{'بلد الصنع':origin,'نوع النسيج':weave,'القوام':stance}})}
+  S.settings.realSummer=true}
+function applyRealPrices(S){for(const g in REAL_PRICES)for(const [c] of REAL_COLORS){const f=S.fabrics.find(x=>x.id==='r-'+g+'-'+c);if(f&&!priced(f))f.price=REAL_PRICES[g]}
+  S.settings.basePrice=0;S.settings.realPrices=true}
+const isActive=f=>f.active!==false;
+const fabTitle=f=>f.name||f.color;
+const fabLabel=f=>f.name?`${f.name} · ${f.color}`:f.color;
+const priced=f=>f.price!=null&&f.price!=='';
+const priceTxt=f=>priced(f)?money(H(f.price)):'<span class="muted">السعر قريباً</span>';
+const groupKey=f=>f.group||f.id;
+function groupsOf(list){const m=new Map();list.forEach(f=>{const k=groupKey(f);if(!m.has(k))m.set(k,[]);m.get(k).push(f)});return [...m.values()]}
+const variantsOf=f=>S.fabrics.filter(x=>groupKey(x)===groupKey(f)&&isActive(x));
+const orderable=(f,qty=1)=>priced(f)&&avail(f)>=S.settings.metersPerThobe*qty;
+const bestOf=g=>g.find(f=>orderable(f))||g[0];
 const isLate=o=>!o.cancelled&&o.stage<9&&Date.now()>o.due;
 const isStaff=()=>SES&&SES.role!=='customer';
 
 function seed(){
   const now=Date.now();
-  S={settings:{workDays:true,basePrice:130,allowDeposit:true,depositPct:50,vatPct:15,metersPerThobe:3.5,dueDays:7,lowStock:30,slots:['10:00 – 12:00','13:00 – 15:00','17:00 – 19:00','19:00 – 21:00']},
+  S={settings:{workDays:true,realPrices:true,vatIncluded:true,vatFix:true,payFix:true,basePrice:0,allowDeposit:false,depositPct:50,vatPct:15,metersPerThobe:3.5,dueDays:7,lowStock:30,slots:['10:00 – 12:00','13:00 – 15:00','17:00 – 19:00','19:00 – 21:00']},
   zones:[{id:'z1',name:'الرياض — الشمال',fee:0,active:true},{id:'z2',name:'الرياض — الشرق',fee:0,active:true},{id:'z3',name:'الرياض — الوسط',fee:0,active:true},{id:'z4',name:'الرياض — الغرب',fee:0,active:false}],
   fabrics:[
    {id:'f1',season:'summer',code:'AS-101',brand:'الأصيل',type:'قطن',color:'أبيض ثلجي',hex:'#f6f7f4',price:180,stock:240,reserved:0,desc:'قطن ناعم بلمعة خفيفة، مناسب للاستخدام اليومي والصيف.',specs:{'التركيب':'100% قطن','الوزن':'115 غ/م²','الملمس':'ناعم'}},
@@ -438,6 +476,7 @@ function seed(){
    {id:'p4',name:'مقاسات المحل',owner:'سعد العتيبي',phone:'555012345',method:'manual',values:{length:150,shoulder:48,chest:112,waist:101,sleeve:63,neck:42,wrist:18.5},status:'review',enteredBy:'موظف · 500000002',enteredAt:now-3*36e5,updated:now-3*36e5,history:[{t:now-3*36e5,text:'سجّل المقاسات: موظف · 500000002'}]}],
   bookings:[{id:'b1',city:'الرياض',address:'حي الياسمين، قرب مسجد الحي',date:new Date(now+3*D).toISOString().slice(0,10),slot:'17:00 – 19:00',status:'pending',created:now-D}],
   cart:[],orders:[],log:[],seq:1006};
+  addRealSummer(S);
   const mk=(n,daysAgo,stage,items,pay,paidAll,tailor,profile,ready,zone,delivered,qc)=>{
     const created=now-daysAgo*D;
     const its=items.map(([fid,qty,opts])=>{const it={fabricId:fid,qty,opts:{...DEF_OPTS,...(opts||{})}};it.unit=unitPrice(it);it.meters=r2(S.settings.metersPerThobe*qty);return it});
@@ -460,7 +499,7 @@ function seed(){
   log('نظام','تحميل البيانات التجريبية: 6 أقمشة، 5 طلبات');
   return S;
 }
-function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
+function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});if(!S.settings.realSummer)addRealSummer(S);if(!S.settings.realPrices)applyRealPrices(S);if(!S.settings.vatFix){S.settings.vatIncluded=true;S.settings.vatFix=true}if(!S.settings.payFix){S.settings.allowDeposit=false;S.settings.payFix=true}const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
 function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate()}}catch(e){S=null}if(!S)seed();loadSes()}
 function loadSes(){try{SES=JSON.parse(localStorage.getItem(sesKey())||'null')}catch(e){SES=null}if(SES&&(SES.role==='customer')===isStaffApp())SES=null}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -568,46 +607,49 @@ V.home=()=>{
       <div class="prog"><i style="width:${Math.round(act.stage/9*100)}%"></i></div>
       <span class="muted small">التسليم المتوقع ${fdate.format(act.due)} · المتبقي ${money(act.total-act.paid)}</span></button>`:''}
    <div class="sec-title"><h3>الأقمشة</h3></div>
-   <div class="seasons">${Object.entries(SEASONS).map(([k,[t,d]])=>{const fs=S.fabrics.filter(f=>seasonOf(f)===k),n=fs.filter(f=>avail(f)>=mpt).length;
+   <div class="seasons">${Object.entries(SEASONS).map(([k,[t,d]])=>{const gs=groupsOf(S.fabrics.filter(f=>isActive(f)&&seasonOf(f)===k)),fs=gs.map(g=>g[0]),n=gs.filter(g=>g.some(f=>orderable(f))).length;
      return `<button class="season ${k}" data-act="season" data-id="${k}"><span class="strip">${fs.slice(0,5).map(f=>`<i style="background:${esc(f.hex)}"></i>`).join('')}</span>
        <span class="sb"><b>${t}</b><small>${d}</small><span class="cnt">${n===0?'لا توجد أقمشة متوفرة':n===1?'قماش واحد متوفر':n===2?'قماشان متوفران':n<=10?n+' أقمشة متوفرة':n+' قماشاً متوفراً'}</span></span></button>`}).join('')}</div>
    <p class="note demo">هذه نسخة تجريبية: الأقمشة والأسعار والطلبات للتجربة فقط، والدفع محاكاة.</p>
   </div>`;
 };
-const fabCard=f=>`<article class="fab">
-    <div class="swatch" style="--sw:${esc(f.hex)}"><span class="demo-tag">صورة تجريبية</span></div>
-    <div class="fab-body"><div class="spread"><span class="code">${esc(f.code)}</span></div>
-      <h3>${esc(f.color)}</h3><div class="muted small">${esc(f.brand)} · ${esc(f.type)}</div>
-      <div class="price">${money(H(f.price))}</div>${availBadge(f)}
-      <button class="btn sm" data-act="fabric-sheet" data-id="${f.id}">التفاصيل</button></div></article>`;
-V.season=k=>{const list=S.fabrics.filter(f=>seasonOf(f)===k).sort((a,b)=>(avail(b)>=S.settings.metersPerThobe)-(avail(a)>=S.settings.metersPerThobe));
+const fabCard=g=>{const f=bestOf(g),anyOk=g.some(x=>avail(x)>=S.settings.metersPerThobe);return `<article class="fab">
+    <div class="swatch split" style="--sw:${esc(g[0].hex)};--sw2:${esc((g[1]||g[0]).hex)}"><span class="demo-tag">صورة تجريبية</span></div>
+    <div class="fab-body">${f.label?`<span class="fab-origin">${esc(f.label)}</span>`:`<span class="code">${esc(f.code)}</span>`}
+      <h3>${esc(fabTitle(f))}</h3><div class="muted small">${esc(f.type)}</div>
+      ${g.length>1?`<div class="dots">${g.map(x=>`<span><i style="background:${esc(x.hex)}"></i>${esc(x.color)}</span>`).join('')}</div>`:''}
+      <div class="price">${priceTxt(f)}</div>${anyOk?availBadge(f):'<span class="pill bad">غير متوفر</span>'}
+      <button class="btn sm" data-act="fabric-sheet" data-id="${f.id}">التفاصيل</button></div></article>`};
+V.season=k=>{const list=groupsOf(S.fabrics.filter(f=>isActive(f)&&seasonOf(f)===k)).sort((a,b)=>orderable(bestOf(b))-orderable(bestOf(a)));
   return `<div class="stack"><p class="muted" style="margin:0">${SEASONS[k][1]}</p><div class="fabrics">${list.map(fabCard).join('')||'<p class="empty">لا توجد أقمشة في هذا القسم حالياً.</p>'}</div></div>`};
 V.store=()=>{
-  const uniq=k=>[...new Set(S.fabrics.map(f=>f[k]))];
+  const act=S.fabrics.filter(isActive),uniq=k=>[...new Set(act.map(f=>f[k]))];
   const sel=(label,k)=>`<select id="flt-${k}" data-ch="filter" data-k="${k}" aria-label="${label}"><option value="">${label}: الكل</option>${uniq(k).map(v=>`<option value="${esc(v)}" ${ui.flt[k]===v?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
-  const list=S.fabrics.filter(f=>['brand','type','color'].every(k=>!ui.flt[k]||f[k]===ui.flt[k]));
-  return `<div class="stack"><div class="filters">${sel('الماركة','brand')}${sel('النوع','type')}${sel('اللون','color')}</div>
+  const list=groupsOf(act.filter(f=>['brand','type','color'].every(k=>!ui.flt[k]||f[k]===ui.flt[k])));
+  return `<div class="stack"><div class="filters">${sel('بلد الصنع','brand')}${sel('النسيج','type')}${sel('اللون','color')}</div>
   <div class="fabrics">${list.map(fabCard).join('')||'<p class="empty">لا توجد أقمشة بهذه المواصفات.</p>'}</div></div>`;
 };
-V.fabric=id=>{const f=fab(id),out=avail(f)<S.settings.metersPerThobe;
+V.fabric=id=>{const f=fab(id),out=avail(f)<S.settings.metersPerThobe,vs=variantsOf(f);
   return `<div class="stack"><div class="sheet"><div class="swatch" style="--sw:${esc(f.hex)}"><span class="demo-tag">صورة تجريبية</span></div>
-   <div class="stack" style="padding:16px;gap:10px"><div class="spread"><span class="code">${esc(f.code)}</span>${availBadge(f)}</div>
-   <h2>${esc(f.color)}</h2><div class="muted">${esc(f.brand)} · ${esc(f.type)}</div>
+   <div class="stack" style="padding:16px;gap:10px"><div class="spread">${f.label?`<span class="fab-origin">${esc(f.label)}</span>`:`<span class="code">${esc(f.code)}</span>`}${availBadge(f)}</div>
+   <h2>${esc(fabTitle(f))}</h2><div class="muted">${esc(f.brand)} · ${esc(f.type)}</div>
+   ${vs.length>1?`<div class="fld"><span>اللون</span><div class="seg two" role="group" aria-label="اللون">${vs.map(x=>`<button data-act="fabric-color" data-id="${x.id}" aria-pressed="${x.id===f.id}"><i class="dot" style="background:${esc(x.hex)}"></i>${esc(x.color)}${avail(x)<S.settings.metersPerThobe?' <small>(غير متوفر)</small>':''}</button>`).join('')}</div></div>`:''}
    <p style="margin:0">${esc(f.desc)}</p><dl class="specs">${Object.entries(f.specs||{}).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-   <div class="spread"><span class="muted small">سعر قماش الثوب الواحد</span><b>${money(H(f.price))}</b></div></div></div>
-   <button class="btn wide" data-act="design-fabric" data-id="${f.id}" ${out?'disabled':''}>${out?'غير متوفر حالياً':'صمّم بهذا القماش'}</button></div>`};
+   <div class="spread"><span class="muted small">سعر الثوب (قماش وتفصيل)</span><b>${priceTxt(f)}</b></div></div></div>
+   <button class="btn wide" data-act="design-fabric" data-id="${f.id}" ${out||!priced(f)?'disabled':''}>${out?'غير متوفر حالياً':!priced(f)?'يتوفر الطلب بعد تحديد السعر':`صمّم بهذا القماش (${esc(f.color)})`}</button></div>`};
 V.design=()=>{
   const d=ui.d||(ui.d=newDraft()),mpt=S.settings.metersPerThobe;
   if(!d.fabricId)return `<div class="stack">
     <div class="steps"><span class="on">١ اختر القماش</span><span>٢ التفاصيل</span></div>
-    <div class="pick">${S.fabrics.map(f=>{const out=avail(f)<mpt;return`<button class="pick-fab" data-act="d-fabric" data-id="${f.id}" ${out?'disabled':''}>
-      <span class="sw" style="--sw:${esc(f.hex)}"></span><span class="t"><b>${esc(f.color)}</b><span class="muted small">${esc(f.brand)} · ${esc(f.type)} · ${esc(f.code)}</span></span>
-      <span class="small">${out?'غير متوفر':money(H(f.price))}</span></button>`}).join('')}</div></div>`;
-  const f=fab(d.fabricId),out=avail(f)<mpt*d.qty,unit=unitPrice(d);
+    ${Object.entries(SEASONS).map(([k,[t]])=>{const gs=groupsOf(S.fabrics.filter(f=>isActive(f)&&seasonOf(f)===k));return gs.length?`<h3 class="ms-group">${t}</h3><div class="pick">${gs.map(g=>{const f=bestOf(g),ok=orderable(f);return`<button class="pick-fab" data-act="d-fabric" data-id="${f.id}" ${ok?'':'disabled'}>
+      <span class="sw split" style="--sw:${esc(g[0].hex)};--sw2:${esc((g[1]||g[0]).hex)}"></span><span class="t"><b>${esc(fabTitle(f))}</b><span class="muted small">${esc(f.label||f.brand)} · ${esc(f.type)}${g.length>1?' · '+g.map(x=>esc(x.color)).join(' / '):''}</span></span>
+      <span class="small">${!priced(f)?'السعر قريباً':avail(f)<mpt?'غير متوفر':money(H(f.price))}</span></button>`}).join('')}</div>`:''}).join('')}</div>`;
+  const f=fab(d.fabricId),out=!orderable(f,d.qty),unit=unitPrice(d),vs=variantsOf(f);
   const extras=GROUPS.map(([g,l])=>({...opt(g,d.opts[g]),l})).filter(o=>o.price>0);
   return `<div class="stack">
     <div class="steps"><button data-act="d-refab">١ القماش</button><span class="on">٢ التفاصيل</span></div>
-    <button class="fab-chosen" data-act="d-refab"><span class="sw" style="--sw:${esc(f.hex)}"></span><span class="t"><b>${esc(f.color)}</b><span class="muted small">${esc(f.brand)} · ${esc(f.code)}</span></span><span class="link">تغيير</span></button>
+    <button class="fab-chosen" data-act="d-refab"><span class="sw" style="--sw:${esc(f.hex)}"></span><span class="t"><b>${esc(fabTitle(f))}</b><span class="muted small">${esc(f.color)} · ${esc(f.code)}</span></span><span class="link">تغيير</span></button>
+    ${vs.length>1?`<div class="opt-row"><span class="lbl">لون القماش</span><div class="seg two" role="group" aria-label="لون القماش">${vs.map(x=>`<button data-act="d-color" data-id="${x.id}" aria-pressed="${x.id===f.id}" ${orderable(x)?'':'disabled'}><i class="dot" style="background:${esc(x.hex)}"></i>${esc(x.color)}</button>`).join('')}</div></div>`:''}
     <div class="stage" style="height:290px">
       <span class="demo-tag">معاينة تجريبية · المجسم 3D لاحقاً</span>
       ${thobeSVG(f.hex,d.opts,d.view).replace('<svg ',`<svg style="transform:scale(${d.zoom})" `)}
@@ -618,11 +660,11 @@ V.design=()=>{
     </div>
     ${GROUPS.map(([g,label])=>`<div class="opt-row"><span class="lbl">${label}</span><div class="seg two" role="group" aria-label="${label}">${S.options[g].map(o=>`<button data-act="d-opt" data-g="${g}" data-id="${o.id}" aria-pressed="${d.opts[g]===o.id}">${esc(o.name)}${o.price?` <small class="num">+${o.price}</small>`:''}</button>`).join('')}</div></div>`).join('')}
     <div class="panel stack" style="gap:8px"><div class="bill">
-        <span>سعر التفصيل</span><span>${money(H(S.settings.basePrice))}</span>
-        <span>قماش ${esc(f.code)}</span><span>${money(H(f.price))}</span>
+        ${H(S.settings.basePrice)?`<span>رسوم التفصيل</span><span>${money(H(S.settings.basePrice))}</span>`:''}
+        <span>ثوب ${esc(fabLabel(f))}</span><span>${money(H(f.price))}</span>
         ${extras.map(o=>`<span>${o.l}: ${esc(o.name)}</span><span>${money(H(o.price))}</span>`).join('')}
         <span class="tot">سعر الثوب</span><span class="tot">${money(unit)}</span></div>
-      <p class="muted small" style="margin:0">التوصيل مجاني، والضريبة تُحسب في السلة. مدة التفصيل ${workLabel()}.</p>
+      <p class="muted small" style="margin:0">التوصيل مجاني${S.settings.vatIncluded?'، والسعر شامل الضريبة':'، والضريبة تُحسب في السلة'}. مدة التفصيل ${workLabel()}.</p>
       ${out?`<p class="note bad">الكمية المتاحة من هذا القماش لا تكفي.</p>`:''}</div>
     <div class="sticky-buy"><div class="qty"><button data-act="d-qty" data-id="-1" aria-label="إنقاص">−</button><span class="num">${d.qty}</span><button data-act="d-qty" data-id="1" aria-label="زيادة">+</button></div>
       <button class="btn" data-act="add-cart" ${out?'disabled':''}>أضف للسلة · ${money(unit*d.qty)}</button></div>
@@ -632,7 +674,7 @@ function cartLines(){return S.cart.map(it=>({...it,unit:unitPrice(it),meters:r2(
 function cartFee(){if(ui.del==='pickup')return 0;const z=S.zones.find(x=>x.id===ui.del&&x.active);return z?H(z.fee):0}
 V.cart=()=>{
   const conf=ui.lastOrder?S.orders.find(o=>o.id===ui.lastOrder):null;
-  const confirm=conf?`<div class="confirm"><h2>تم استلام طلبك</h2><p style="margin:0">الرقم المرجعي <b class="ref">${conf.ref}</b></p><p class="small" style="margin:0">المدفوع ${money(conf.paid)} · المتبقي ${money(conf.total-conf.paid)}</p><p class="small muted" style="margin:0">${conf.measure.ready?'المقاسات معتمدة، وسيبدأ التنفيذ بعد المراجعة.':'لن يبدأ التنفيذ قبل اعتماد المقاسات.'}</p><button class="btn sm" data-act="open-order" data-id="${conf.id}" style="align-self:flex-start">متابعة الطلب</button></div>`:'';
+  const confirm=conf?`<div class="confirm"><h2>تم استلام طلبك</h2><p style="margin:0">الرقم المرجعي <b class="ref">${conf.ref}</b></p><p class="small" style="margin:0">المدفوع ${money(conf.paid)}${conf.total>conf.paid?` · المتبقي ${money(conf.total-conf.paid)}`:''}</p><p class="small muted" style="margin:0">${conf.measure.ready?'المقاسات معتمدة، وسيبدأ التنفيذ بعد المراجعة.':'لن يبدأ التنفيذ قبل اعتماد المقاسات.'}</p><button class="btn sm" data-act="open-order" data-id="${conf.id}" style="align-self:flex-start">متابعة الطلب</button></div>`:'';
   if(!S.cart.length)return `<div class="stack">${confirm}<div class="empty"><p>السلة فارغة.</p><button class="btn" data-act="go" data-id="design">ابدأ التصميم</button></div></div>`;
   if(!ui.cartProfile||!S.profiles.find(p=>p.id===ui.cartProfile))ui.cartProfile=S.profiles[0]?.id;
   if(ui.payMode==='deposit'&&!S.settings.allowDeposit)ui.payMode='full';
@@ -642,7 +684,7 @@ V.cart=()=>{
   const short=Object.keys(need).filter(id=>avail(fab(id))<need[id]);
   return `<div class="stack">
    <div class="panel">${lines.map(l=>{const f=fab(l.fabricId);return`<div class="line"><div class="mini">${thobeSVG(f.hex,l.opts,'front')}</div>
-     <div style="min-width:0"><h3>ثوب · ${esc(f.color)}</h3><div class="muted small">${esc(optSummary(l.opts))}</div>
+     <div style="min-width:0"><h3>ثوب · ${esc(fabLabel(f))}</h3><div class="muted small">${esc(optSummary(l.opts))}</div>
      <div class="row" style="margin-top:6px"><div class="qty"><button data-act="c-qty" data-id="${l.id}" data-d="-1" aria-label="إنقاص">−</button><span class="num">${l.qty}</span><button data-act="c-qty" data-id="${l.id}" data-d="1" aria-label="زيادة">+</button></div><button class="link" data-act="c-remove" data-id="${l.id}">حذف</button></div></div>
      <b style="white-space:nowrap">${money(l.unit*l.qty)}</b></div>`}).join('')}</div>
    <label class="fld" for="c-profile"><span>ملف المقاسات</span><select id="c-profile" data-ch="cart-profile">${S.profiles.map(x=>`<option value="${x.id}" ${x.id===ui.cartProfile?'selected':''}>${esc(x.name)} (${METHOD[x.method]})</option>`).join('')}</select></label>
@@ -651,15 +693,16 @@ V.cart=()=>{
      <label><span><input type="radio" name="del" value="pickup" data-ch="del" ${ui.del==='pickup'?'checked':''}>الاستلام من المحل</span><span class="small">مجاناً</span></label>
      ${S.zones.filter(z=>z.active).map(z=>`<label><span><input type="radio" name="del" value="${z.id}" data-ch="del" ${ui.del===z.id?'checked':''}>توصيل: ${esc(z.name)}</span><span class="small">مجاناً</span></label>`).join('')}
    </div></div>
-   <div class="fld"><span>طريقة الدفع</span><div class="radio-list">
+   ${S.settings.allowDeposit?`<div class="fld"><span>طريقة الدفع</span><div class="radio-list">
      <label><span><input type="radio" name="pay" value="full" data-ch="pay" ${ui.payMode==='full'?'checked':''}>دفع كامل المبلغ</span></label>
-     ${S.settings.allowDeposit?`<label><span><input type="radio" name="pay" value="deposit" data-ch="pay" ${ui.payMode==='deposit'?'checked':''}>دفع عربون ${S.settings.depositPct}%</span></label>`:''}
-   </div></div>
+     <label><span><input type="radio" name="pay" value="deposit" data-ch="pay" ${ui.payMode==='deposit'?'checked':''}>دفع عربون ${S.settings.depositPct}%</span></label>
+   </div></div>`:''}
    <div class="panel"><div class="bill">
      <span>المجموع</span><span>${money(t.sub)}</span><span>التوصيل</span><span>مجاناً</span>
-     <span>ضريبة القيمة المضافة ${S.settings.vatPct}%</span><span>${money(t.vat)}</span>
+     ${t.incl?'':vatRow(t.vat,false)}
      <span class="tot">الإجمالي</span><span class="tot">${money(t.total)}</span>
-     <span>المطلوب الآن</span><span><b>${money(req)}</b></span><span>المتبقي عند الاستلام</span><span>${money(t.total-req)}</span></div></div>
+     ${t.incl?vatRow(t.vat,true):''}
+     ${req<t.total?`<span>المطلوب الآن</span><span><b>${money(req)}</b></span><span>المتبقي عند الاستلام</span><span>${money(t.total-req)}</span>`:''}</div></div>
    <p class="note good">التوصيل مجاني، ويجهز طلبك خلال ${workLabel()} من اعتماد المقاسات. التسليم المتوقع ${fdate.format(addWorkDays(Date.now(),S.settings.dueDays))}.</p>
    <p class="note demo">الدفع محاكاة ولا يُخصم أي مبلغ. نسبة الضريبة تُعتمد بعد التحقق النظامي.</p>
    ${short.length?`<p class="note bad">الكمية المتاحة لا تكفي من: ${short.map(id=>esc(fab(id).code)).join('، ')}</p>`:''}
@@ -686,9 +729,9 @@ V.order=id=>{const o=S.orders.find(x=>x.id===id);if(!o)return'<p class="empty">�
    <span class="muted small">طُلب ${fdate.format(o.created)} · التسليم المتوقع ${fdate.format(o.due)}</span>
    ${!o.measure.ready&&!o.cancelled?'<p class="note warn">بانتظار اعتماد المقاسات قبل بدء التنفيذ.</p>':''}</div>
   <div class="panel"><ol class="vtrack">${STAGES.map((s,i)=>`<li class="${(i<o.stage||o.stage===9)&&!o.cancelled?'done':''} ${i===o.stage&&o.stage<9&&!o.cancelled?'cur':''}"><span>${s}</span><span class="small muted num">${o.stageTimes[i]?fdt.format(o.stageTimes[i]):''}</span></li>`).join('')}</ol></div>
-  <div class="panel">${o.items.map(it=>{const f=fab(it.fabricId);return`<div class="line"><div class="mini">${thobeSVG(f.hex,it.opts,'front')}</div><div style="min-width:0"><h3>${it.qty} × ثوب ${esc(f.color)}</h3><div class="muted small">${esc(f.color)} · ${esc(optSummary(it.opts))}</div></div><b>${money(it.unit*it.qty)}</b></div>`}).join('')}</div>
-  <div class="panel"><dl class="kv"><dt>المجموع</dt><dd>${money(o.sub)}</dd><dt>التوصيل</dt><dd>${o.delivery.fee?money(o.delivery.fee):'مجاناً'}</dd><dt>الضريبة</dt><dd>${money(o.vat)}</dd>
-   <dt><b>الإجمالي</b></dt><dd><b>${money(o.total)}</b></dd><dt>المدفوع</dt><dd>${money(o.paid)}</dd><dt>المتبقي</dt><dd><b>${money(o.total-o.paid)}</b></dd>
+  <div class="panel">${o.items.map(it=>{const f=fab(it.fabricId);return`<div class="line"><div class="mini">${thobeSVG(f.hex,it.opts,'front')}</div><div style="min-width:0"><h3>${it.qty} × ثوب ${esc(fabLabel(f))}</h3><div class="muted small">${esc(f.color)} · ${esc(optSummary(it.opts))}</div></div><b>${money(it.unit*it.qty)}</b></div>`}).join('')}</div>
+  <div class="panel"><dl class="kv"><dt>المجموع</dt><dd>${money(o.sub)}</dd><dt>التوصيل</dt><dd>${o.delivery.fee?money(o.delivery.fee):'مجاناً'}</dd>${o.total===o.sub+(o.delivery.fee||0)?'':`<dt>الضريبة</dt><dd>${money(o.vat)}</dd>`}
+   <dt><b>الإجمالي</b></dt><dd><b>${money(o.total)}</b></dd>${o.total===o.sub+(o.delivery.fee||0)?`<dt class="small">شامل الضريبة</dt><dd class="small">${money(o.vat)}</dd>`:''}<dt>المدفوع</dt><dd>${money(o.paid)}</dd><dt>المتبقي</dt><dd><b>${money(o.total-o.paid)}</b></dd>
    <dt>الاستلام</dt><dd>${o.delivery.type==='pickup'?'من المحل':esc(zone?zone.name:'توصيل')}</dd>
    <dt>حالة التسليم</dt><dd>${o.delivery.status==='delivered'?'تم '+fdate.format(o.delivery.date):'لم يُسلّم بعد'}</dd></dl></div></div>`};
 V.measure=()=>{
@@ -722,7 +765,7 @@ const A={};
 A.overview=()=>{
   const act=S.orders.filter(o=>!o.cancelled),sum=f=>act.reduce((a,o)=>a+f(o),0);
   const dep=act.filter(o=>o.payMode==='deposit').reduce((a,o)=>a+o.required,0);
-  const late=act.filter(isLate),low=S.fabrics.filter(f=>avail(f)<S.settings.lowStock),pend=S.bookings.filter(b=>b.status==='pending'),msq=S.profiles.filter(p=>p.status==='review');
+  const late=act.filter(isLate),low=S.fabrics.filter(f=>isActive(f)&&avail(f)<S.settings.lowStock),pend=S.bookings.filter(b=>b.status==='pending'),msq=S.profiles.filter(p=>p.status==='review');
   const open=act.filter(o=>o.stage<9),counts=STAGES.slice(0,9).map((_,i)=>open.filter(o=>o.stage===i).length),mx=Math.max(1,...counts);
   return `<div class="stack"><div class="kpis">
     <div class="kpi"><span>إجمالي المبيعات</span><b>${money(sum(o=>o.total))}</b><small>${act.length} طلب</small></div>
@@ -731,7 +774,7 @@ A.overview=()=>{
     <div class="kpi"><span>قيد التنفيذ</span><b class="num">${open.length}</b><small>${late.length} متأخر</small></div></div>
    <div class="panel stack"><h2>تحتاج متابعة</h2><ul class="alert-list">
       ${late.map(o=>`<li><span><span class="pill bad">متأخر</span> <span class="ref">${o.ref}</span> · ${STAGES[o.stage]}</span><span class="small muted">${dur(Date.now()-o.due)}</span></li>`).join('')}
-      ${low.map(f=>`<li><span><span class="pill warn">مخزون منخفض</span> ${esc(f.code)} ${esc(f.color)}</span><span class="small">${mtr(avail(f))}</span></li>`).join('')}
+      ${low.map(f=>`<li><span><span class="pill warn">مخزون منخفض</span> ${esc(fabLabel(f))}</span><span class="small">${mtr(avail(f))}</span></li>`).join('')}
       ${pend.map(b=>`<li><span><span class="pill warn">حجز مندوب</span> ${esc(b.city)} · <span class="num">${esc(b.date)}</span></span><span class="small muted">بانتظار الموافقة</span></li>`).join('')}
       ${msq.map(p=>`<li><span><span class="pill acc">مقاسات</span> ${esc(p.owner||'عميل')} · ${esc(p.name)}</span><button class="link" data-act="open-measure" data-id="${p.id}">مراجعة</button></li>`).join('')}
       ${!late.length&&!low.length&&!pend.length&&!msq.length?'<li class="muted">لا شيء يحتاج متابعة الآن.</li>':''}</ul></div>
@@ -784,7 +827,7 @@ function orderDetail(o){
       ${o.stage>=6?`<label class="fld" for="qc-${o.id}"><span>ملاحظات فحص الجودة</span><textarea id="qc-${o.id}" data-ch="qc" data-id="${o.id}" ${o.stage===6&&canAdv?'':'readonly'}>${esc(o.qc)}</textarea></label>`:''}
       ${canAdv?`${gate?`<p class="gate">${gate}</p>`:''}<button class="btn" data-act="o-adv" data-id="${o.id}">نقل إلى «${STAGES[o.stage+1]}»</button>`:''}
     </div>
-    <div class="box"><h3>الثياب</h3>${o.items.map(it=>{const f=fab(it.fabricId);return`<div class="small"><b>${it.qty} × ثوب</b> · ${esc(f.code)} ${esc(f.color)}<br><span class="muted">${esc(optSummary(it.opts))}</span></div>`}).join('')}
+    <div class="box"><h3>الثياب</h3>${o.items.map(it=>{const f=fab(it.fabricId);return`<div class="small"><b>${it.qty} × ثوب</b> · ${esc(fabLabel(f))} <span class="code">${esc(f.code)}</span><br><span class="muted">${esc(optSummary(it.opts))}</span></div>`}).join('')}
       <dl class="kv"><dt>القماش</dt><dd>${Object.keys(o.reserved).length?'محجوز '+Object.entries(o.reserved).map(([id,m])=>esc(fab(id).code)+' '+mtr(m)).join('، '):Object.keys(o.consumed).length?'مستهلك '+Object.entries(o.consumed).map(([id,m])=>esc(fab(id).code)+' '+mtr(m)).join('، '):'—'}</dd></dl></div>
     <div class="box"><h3>المقاسات والتسليم</h3><dl class="kv">
       <dt>الملف</dt><dd>${p?esc(p.name)+' · '+METHOD[p.method]:'—'}</dd>
@@ -804,14 +847,15 @@ function orderDetail(o){
   </div>`;
 }
 A.inventory=()=>{
-  const low=S.fabrics.filter(f=>avail(f)<S.settings.lowStock);
+  const low=S.fabrics.filter(f=>isActive(f)&&avail(f)<S.settings.lowStock);
   return `<div class="stack">
-  ${low.length?`<p class="note warn">مخزون منخفض: ${low.map(f=>esc(f.code)+' '+esc(f.color)).join('، ')}</p>`:''}
-  ${S.fabrics.map(f=>`<div class="panel stack" style="gap:6px"><div class="spread"><span class="row" style="gap:8px"><span style="width:16px;height:16px;border-radius:4px;background:${esc(f.hex)};border:1px solid var(--line)"></span><b>${esc(f.color)}</b><span class="code">${esc(f.code)}</span></span>${availBadge(f)}</div>
+  ${low.length?`<p class="note warn">مخزون منخفض: ${low.map(f=>esc(fabLabel(f))).join('، ')}</p>`:''}
+  ${S.fabrics.map(f=>`<div class="panel stack" style="gap:6px"><div class="spread"><span class="row" style="gap:8px"><span style="width:16px;height:16px;border-radius:4px;background:${esc(f.hex)};border:1px solid var(--line)"></span><b>${esc(fabLabel(f))}</b><span class="code">${esc(f.code)}</span>${isActive(f)?'':'<span class="pill">مخفي</span>'}</span>${availBadge(f)}</div>
     <dl class="kv"><dt>المخزون</dt><dd>${mtr(f.stock)}</dd><dt>محجوز للطلبات</dt><dd>${mtr(f.reserved)}</dd><dt>متاح</dt><dd><b>${mtr(avail(f))}</b> · يكفي ${Math.floor(avail(f)/S.settings.metersPerThobe)} ثوب</dd></dl>
+    ${SES.role==='manager'?`<label class="check" for="fa-${f.id}"><input type="checkbox" id="fa-${f.id}" data-path="fabrics.${f.id}.active" data-label="إظهار ${esc(f.code)} للعملاء" ${isActive(f)?'checked':''}> يظهر للعملاء</label>`:''}
     ${SES.role==='manager'?`<label class="spread" for="fs-${f.id}"><span class="muted small">يظهر للعملاء في</span><select id="fs-${f.id}" style="width:auto" data-path="fabrics.${f.id}.season" data-kind="text" data-label="قسم قماش ${esc(f.code)}">${Object.entries(SEASONS).map(([k,[t]])=>`<option value="${k}" ${seasonOf(f)===k?'selected':''}>${t}</option>`).join('')}</select></label>`:`<span class="muted small">${SEASONS[seasonOf(f)][0]}</span>`}</div>`).join('')}
   <div class="panel stack"><h2>تسجيل حركة مخزون</h2><div class="form-grid">
-    <label class="fld" for="mv-f"><span>القماش</span><select id="mv-f">${S.fabrics.map(f=>`<option value="${f.id}">${esc(f.code)} ${esc(f.color)}</option>`).join('')}</select></label>
+    <label class="fld" for="mv-f"><span>القماش</span><select id="mv-f">${S.fabrics.map(f=>`<option value="${f.id}">${esc(fabLabel(f))} (${esc(f.code)})</option>`).join('')}</select></label>
     <label class="fld" for="mv-t"><span>نوع الحركة</span><select id="mv-t"><option value="purchase">شراء (+)</option><option value="return">مرتجع (+)</option><option value="waste">هدر (−)</option><option value="adjust">تسوية جرد (±)</option></select></label>
     <label class="fld" for="mv-m"><span>الكمية (م)</span><input type="number" id="mv-m" step="0.1"></label>
     <label class="fld" for="mv-n"><span>ملاحظة</span><input type="text" id="mv-n" placeholder="إلزامية للهدر والتسوية"></label>
@@ -833,12 +877,13 @@ A.reps=()=>`<div class="stack">${[...S.bookings].sort((a,b)=>a.date.localeCompar
    <span class="small">${esc(b.city)} · ${esc(b.address)}</span>
    ${b.status==='pending'&&SES.role!=='rep'?`<div class="row"><button class="btn sm" data-act="b-ok" data-id="${b.id}">موافقة</button><button class="btn ghost sm" data-act="b-no" data-id="${b.id}">رفض</button></div>`:''}</div>`).join('')||'<p class="empty">لا توجد حجوزات.</p>'}
   ${SES.role==='rep'?'<p class="note">بدور المندوب ترى المواعيد فقط. الموافقة على الحجوزات من صلاحيات الإدارة.</p>':''}</div>`;
-function numIn(path,val,label,step=1,max){return `<input type="number" min="0" ${max?`max="${max}"`:''} step="${step}" value="${val}" data-path="${path}" data-label="${esc(label)}" aria-label="${esc(label)}">`}
+function numIn(path,val,label,step=1,max){return `<input type="number" min="0" ${max?`max="${max}"`:''} step="${step}" value="${val??''}" data-path="${path}" data-label="${esc(label)}" aria-label="${esc(label)}">`}
 A.settings=()=>{const s=S.settings;return `<div class="stack">
   <div class="panel stack"><h2>الدفع والضريبة</h2>
     <label class="check"><input type="checkbox" data-path="settings.allowDeposit" data-label="السماح بالعربون" ${s.allowDeposit?'checked':''}> السماح بالدفع بعربون</label>
     <div class="form-grid"><label class="fld"><span>نسبة العربون %</span>${numIn('settings.depositPct',s.depositPct,'نسبة العربون',1,100)}</label>
     <label class="fld"><span>الضريبة %</span>${numIn('settings.vatPct',s.vatPct,'نسبة الضريبة',0.5,100)}</label></div>
+    <label class="check"><input type="checkbox" data-path="settings.vatIncluded" data-label="الأسعار شاملة الضريبة" ${s.vatIncluded?'checked':''}> الأسعار المعروضة شاملة الضريبة (لا تُضاف فوقها)</label>
     <p class="note demo">تُعتمد النسبة ومتطلبات الفوترة بعد التحقق النظامي.</p></div>
   <div class="panel stack"><h2>الإنتاج والمخزون</h2><div class="form-grid">
     <label class="fld"><span>أمتار الثوب الواحد</span>${numIn('settings.metersPerThobe',s.metersPerThobe,'أمتار الثوب',0.1)}</label>
@@ -846,10 +891,10 @@ A.settings=()=>{const s=S.settings;return `<div class="stack">
     <label class="fld full"><span>حد تنبيه انخفاض المخزون (م)</span>${numIn('settings.lowStock',s.lowStock,'حد التنبيه',1)}</label>
     <label class="fld full"><span>مواعيد زيارات المندوب (موعد في كل سطر)</span><textarea data-path="settings.slots" data-kind="lines" data-label="مواعيد المندوب">${esc(s.slots.join('\n'))}</textarea></label></div></div>
   <div class="panel stack"><h2>أسعار التفصيل</h2><div class="form-grid">
-    <label class="fld full"><span>سعر التفصيل الأساسي للثوب</span>${numIn('settings.basePrice',s.basePrice,'سعر التفصيل')}</label>
+    <label class="fld full"><span>رسوم تفصيل تُضاف على كل ثوب (0 إذا كان سعر القماش شاملاً)</span>${numIn('settings.basePrice',s.basePrice,'رسوم التفصيل')}</label>
     ${GROUPS.map(([g,l])=>S.options[g].map(o=>`<label class="fld"><span>${l}: ${esc(o.name)}</span>${numIn(`options.${g}.${o.id}.price`,o.price,'سعر '+l+' '+o.name)}</label>`).join('')).join('')}</div>
-    <p class="muted small" style="margin:0">سعر الثوب = التفصيل + القماش + إضافات الخيارات.</p></div>
-  <div class="panel stack"><h2>أسعار الأقمشة (للثوب)</h2><div class="form-grid">${S.fabrics.map(f=>`<label class="fld"><span>${esc(f.code)} ${esc(f.color)}</span>${numIn(`fabrics.${f.id}.price`,f.price,'سعر قماش '+f.code)}</label>`).join('')}</div></div>
+    <p class="muted small" style="margin:0">سعر الثوب = سعر القماش (شامل التفصيل) + رسوم التفصيل إن وُجدت + إضافات الخيارات.</p></div>
+  <div class="panel stack"><h2>سعر الثوب لكل قماش (شامل التفصيل)</h2><div class="form-grid">${S.fabrics.filter(isActive).map(f=>`<label class="fld"><span>${esc(fabLabel(f))}</span>${numIn(`fabrics.${f.id}.price`,f.price,'سعر قماش '+f.code)}</label>`).join('')}</div></div>
   <div class="panel stack"><h2>مناطق التوصيل</h2><p class="muted small" style="margin:0">التوصيل مجاني لكل المناطق المفعّلة.</p>${S.zones.map(z=>`<label class="check"><input type="checkbox" data-path="zones.${z.id}.active" data-label="تفعيل ${esc(z.name)}" ${z.active?'checked':''}> ${esc(z.name)}</label>`).join('')}</div>
   <div class="panel stack"><h2>البيانات التجريبية</h2>${ui.confirm==='reset'?`<p class="note bad">ستُحذف كل التغييرات وتعود البيانات الأولية.</p><div class="row"><button class="btn danger sm" data-act="reset-yes">تأكيد</button><button class="btn ghost sm" data-act="confirm-no">تراجع</button></div>`:`<button class="btn ghost" data-act="reset">إعادة ضبط البيانات التجريبية</button>`}</div>
  </div>`};
@@ -1009,11 +1054,13 @@ const ACT={
  'design-fabric':id=>{ui.d=newDraft(id);ui.tab='design';ui.sub=null;toTop()},
  'd-fabric':id=>{ui.d.fabricId=id;toTop()},
  'd-refab':()=>{ui.d.fabricId=null;toTop()},
+ 'd-color':id=>{ui.d.fabricId=id},
+ 'fabric-color':id=>{ui.sub='fabric:'+id},
  'd-opt':(id,b)=>{ui.d.opts[b.dataset.g]=id},
  'd-view':id=>{ui.d.view=id},
  'd-zoom':id=>{ui.d.zoom=Math.min(2,Math.max(1,r2(ui.d.zoom+(+id)*.25)))},
  'd-qty':id=>{ui.d.qty=Math.min(20,Math.max(1,ui.d.qty+(+id)))},
- 'add-cart':()=>{const d=ui.d;S.cart.push({id:'i'+Date.now(),fabricId:d.fabricId,opts:{...d.opts},qty:d.qty});save();toast('أُضيف إلى السلة')},
+ 'add-cart':()=>{const d=ui.d;if(!orderable(fab(d.fabricId),d.qty))return toast('هذا القماش غير متاح للطلب حالياً','bad');S.cart.push({id:'i'+Date.now(),fabricId:d.fabricId,opts:{...d.opts},qty:d.qty});save();toast('أُضيف إلى السلة')},
  'c-qty':(id,b)=>{const it=S.cart.find(x=>x.id===id);it.qty=Math.min(20,Math.max(1,it.qty+(+b.dataset.d)));save()},
  'c-remove':id=>{S.cart=S.cart.filter(x=>x.id!==id);save()},
  'm-method':id=>{ui.mMethod=id},
