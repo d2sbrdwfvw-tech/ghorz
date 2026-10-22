@@ -363,7 +363,7 @@ const sesKey=()=>isStaffApp()?'ghorz-session-staff':'ghorz-session-customer';
 const STAGES=['طلب جديد','مراجعة المقاسات','حجز القماش','القص','الخياطة','الكي','فحص الجودة','التغليف','جاهز للتسليم','مكتمل'];
 const GROUPS=[['collar','الياقة'],['sleeve','الأكمام'],['closure','الإغلاق'],['front','الجيب الأمامي'],['right','الجيب الجانبي الأيمن'],['left','الجيب الجانبي الأيسر']];
 const DEF_OPTS={collar:'c1',sleeve:'s1',closure:'z1',front:'f1',right:'r0',left:'l0'};
-const NEW_OPTS={sleeve:[{id:'s1',name:'عادي',price:0},{id:'s2',name:'كبك خفيف',price:10},{id:'s3',name:'كبك ثقيل',price:20}],closure:[{id:'z1',name:'أزرار',price:0},{id:'z2',name:'سحاب مخفي',price:15}]};
+const NEW_OPTS={sleeve:[{id:'s1',name:'عادي',price:0},{id:'s2',name:'كبك خفيف',price:0},{id:'s3',name:'كبك ثقيل',price:0}],closure:[{id:'z1',name:'أزرار',price:0},{id:'z2',name:'سحاب مخفي',price:0}]};
 const MFIELDS=[
  ['length','طول الثوب','من أعلى الكتف عند الرقبة حتى الكعب',100,175],
  ['shoulder','عرض الكتف','من طرف الكتف إلى طرفه الآخر من الخلف',35,62],
@@ -465,7 +465,7 @@ const isStaff=()=>SES&&SES.role!=='customer';
 
 function seed(){
   const now=Date.now();
-  S={settings:{workDays:true,realPrices:true,vatIncluded:true,vatFix:true,payFix:true,basePrice:0,allowDeposit:false,depositPct:50,vatPct:15,metersPerThobe:3.5,dueDays:7,lowStock:30,slots:['10:00 – 12:00','13:00 – 15:00','17:00 – 19:00','19:00 – 21:00']},
+  S={settings:{workDays:true,realPrices:true,vatIncluded:true,vatFix:true,payFix:true,optFix:true,basePrice:0,allowDeposit:false,depositPct:50,vatPct:15,metersPerThobe:3.5,dueDays:7,lowStock:30,slots:['10:00 – 12:00','13:00 – 15:00','17:00 – 19:00','19:00 – 21:00']},
   zones:[{id:'z1',name:'الرياض — الشمال',fee:0,active:true},{id:'z2',name:'الرياض — الشرق',fee:0,active:true},{id:'z3',name:'الرياض — الوسط',fee:0,active:true},{id:'z4',name:'الرياض — الغرب',fee:0,active:false}],
   fabrics:[
    {id:'f1',season:'summer',code:'AS-101',brand:'الأصيل',type:'قطن',color:'أبيض ثلجي',hex:'#f6f7f4',price:180,stock:240,reserved:0,desc:'قطن ناعم بلمعة خفيفة، مناسب للاستخدام اليومي والصيف.',specs:{'التركيب':'100% قطن','الوزن':'115 غ/م²','الملمس':'ناعم'}},
@@ -476,12 +476,12 @@ function seed(){
    {id:'f7',season:'winter',code:'NJ-322',brand:'نجد',type:'صوف خفيف',color:'رمادي فحمي',hex:'#4a4d52',price:270,stock:75,reserved:0,desc:'رمادي داكن شتوي بملمس دافئ.',specs:{'التركيب':'70% صوف، 30% بوليستر','الوزن':'220 غ/م²','الملمس':'دافئ'}},
    {id:'f6',season:'winter',code:'NJ-318',brand:'نجد',type:'صوف خفيف',color:'بني فاتح',hex:'#987d61',price:260,stock:2,reserved:0,desc:'بني شتوي، الكمية الحالية لا تكفي ثوباً كاملاً.',specs:{'التركيب':'70% صوف، 30% بوليستر','الوزن':'210 غ/م²','الملمس':'دافئ'}}],
   options:{
-   collar:[{id:'c1',name:'عادي',price:0},{id:'c2',name:'قلاب',price:10}],
+   collar:[{id:'c1',name:'عادي',price:0},{id:'c2',name:'قلاب',price:0}],
    sleeve:NEW_OPTS.sleeve.map(o=>({...o})),
    closure:NEW_OPTS.closure.map(o=>({...o})),
-   front:[{id:'f1',name:'عادي',price:0},{id:'f2',name:'مخفي',price:10}],
-   right:[{id:'r0',name:'بدون جيب داخلي',price:0},{id:'r1',name:'مع جيب صغير',price:5}],
-   left:[{id:'l0',name:'بدون جيب داخلي',price:0},{id:'l1',name:'مع جيب صغير',price:5}]},
+   front:[{id:'f1',name:'عادي',price:0},{id:'f2',name:'مخفي',price:0}],
+   right:[{id:'r0',name:'بدون جيب داخلي',price:0},{id:'r1',name:'مع جيب صغير',price:0}],
+   left:[{id:'l0',name:'بدون جيب داخلي',price:0},{id:'l1',name:'مع جيب صغير',price:0}]},
   tailors:[{id:'t1',name:'سليم'},{id:'t2',name:'رشيد'},{id:'t3',name:'أنور'}],
   profiles:[
    {id:'p1',name:'مقاساتي',owner:'عميل تجريبي',phone:'512345678',method:'manual',values:{length:146,shoulder:47,chest:108,waist:98,sleeve:62,neck:41,wrist:18},status:'approved',enteredBy:'العميل',enteredAt:now-30*D,approvedBy:'مدير · 500000001',approvedAt:now-29*D,updated:now-29*D,history:[{t:now-30*D,text:'سجّل المقاسات: العميل'},{t:now-29*D,text:'اعتمد المقاسات: مدير · 500000001'}]},
@@ -513,7 +513,7 @@ function seed(){
   log('نظام','تحميل البيانات التجريبية: 6 أقمشة، 5 طلبات');
   return S;
 }
-function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});if(!S.settings.realSummer)addRealSummer(S);if(!S.settings.realPrices)applyRealPrices(S);if(!S.settings.vatFix){S.settings.vatIncluded=true;S.settings.vatFix=true}if(!S.settings.payFix){S.settings.allowDeposit=false;S.settings.payFix=true}const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
+function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});if(!S.settings.realSummer)addRealSummer(S);if(!S.settings.realPrices)applyRealPrices(S);if(!S.settings.vatFix){S.settings.vatIncluded=true;S.settings.vatFix=true}if(!S.settings.payFix){S.settings.allowDeposit=false;S.settings.payFix=true}if(!S.settings.optFix){for(const g in S.options)S.options[g].forEach(o=>o.price=0);S.settings.optFix=true}const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
 function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate()}}catch(e){S=null}if(!S)seed();loadSes()}
 function loadSes(){try{SES=JSON.parse(localStorage.getItem(sesKey())||'null')}catch(e){SES=null}if(SES&&(SES.role==='customer')===isStaffApp())SES=null}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
