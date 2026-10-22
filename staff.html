@@ -253,6 +253,11 @@ dl.specs dd{margin:0}
 .list>*{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid var(--line);width:100%;background:none;border-inline:0;border-top:0;text-align:start;cursor:pointer;color:inherit}
 .list>*:last-child{border-bottom:0}
 .list .grow{flex:1;min-width:0}
+.list>* svg{width:20px;height:20px;flex:none;color:var(--accent)}
+.list>*{padding:11px 14px;font-size:.92rem}
+.acct-head{display:flex;align-items:center;gap:12px}
+.acct-head .av{width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.acct-head .av svg{width:22px;height:22px}
 .list svg.ch{width:18px;height:18px;color:var(--muted);flex:none;transform:scaleX(-1)}
 .line{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}
 .line:first-child{padding-top:0}.line:last-child{border-bottom:0;padding-bottom:0}
@@ -737,7 +742,7 @@ function mountMap(){
 V.cart=()=>{
   const conf=ui.lastOrder?S.orders.find(o=>o.id===ui.lastOrder):null;
   const confirm=conf?`<div class="confirm"><h2>تم استلام طلبك</h2><p style="margin:0">الرقم المرجعي <b class="ref">${conf.ref}</b></p><p class="small" style="margin:0">المدفوع ${money(conf.paid)} · التوصيل إلى: ${esc(dlvText(conf))}</p><p class="small muted" style="margin:0">${conf.measure.ready?'المقاسات معتمدة، وسيبدأ التنفيذ بعد المراجعة.':S.profiles.find(p=>p.id===conf.profileId)?.method==='rep'?'سنتواصل معك لتأكيد زيارة المندوب، ويبدأ التفصيل بعد اعتماد المقاسات.':'لن يبدأ التنفيذ قبل اعتماد المقاسات.'}</p><button class="btn sm" data-act="open-order" data-id="${conf.id}" style="align-self:flex-start">متابعة الطلب</button></div>`:'';
-  if(!S.cart.length)return `<div class="stack">${confirm}<div class="empty"><p>السلة فارغة.</p><button class="btn" data-act="go" data-id="design">ابدأ التصميم</button></div></div>`;
+  if(!S.cart.length)return `<div class="stack">${confirm}<div class="empty"><p>السلة فارغة.</p><button class="btn" data-act="go" data-id="store">اختر القماش وابدأ التصميم</button></div></div>`;
   const c=co(),lines=cartLines(),t=totals(lines,0),short=coShort(c),usable=S.profiles.filter(p=>p.status!=='rejected');
   if(c.ms==='saved'&&!usable.find(p=>p.id===c.profileId))c.profileId=(usable.find(p=>p.status==='approved')||usable[0])?.id||null;
   if(c.step===1){
@@ -789,8 +794,8 @@ V.cart=()=>{
    <button class="btn wide" data-act="pay" ${short.length?'disabled':''}>ادفع ${money(t.total)}</button></div>`;
 };
 V.account=()=>`<div class="stack">
-  <div class="panel row"><div style="width:48px;height:48px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center">${IC.user}</div>
-   <div><b>عميل تجريبي</b><div class="muted small num">+966 ${esc(SES.phone)}</div></div></div>
+  <div class="panel acct-head"><div class="av">${IC.user}</div>
+   <div><b>عميل تجريبي</b><div class="muted small"><bdi dir="ltr" class="num">+966 ${esc(SES.phone)}</bdi></div></div></div>
   <div class="list">
    <button data-act="go" data-id="account" data-sub="orders">${IC.list}<span class="grow">طلباتي</span><span class="muted small">${S.orders.length}</span>${IC.chev}</button>
    <button data-act="go" data-id="account" data-sub="measure">${IC.ruler}<span class="grow">المقاسات وحجز المندوب</span><span class="muted small">${S.profiles.length}</span>${IC.chev}</button>
@@ -983,7 +988,7 @@ A.log=()=>{const kinds=[...new Set(S.log.map(l=>l.kind))],list=S.log.filter(l=>!
   return `<div class="stack"><select id="logf" data-ch="logf" aria-label="نوع السجل"><option value="">كل الأنواع</option>${kinds.map(k=>`<option ${ui.logF===k?'selected':''}>${esc(k)}</option>`).join('')}</select>
   <div class="panel"><ul class="log">${list.slice(0,150).map(logLi).join('')||'<li class="muted">لا توجد سجلات.</li>'}</ul></div></div>`};
 A.more=()=>{const extra=ROLE_TABS[SES.role].filter(k=>!adminNav().includes(k));
-  return `<div class="stack"><div class="panel row"><div style="width:48px;height:48px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center">${IC.user}</div><div><b>${ROLES[SES.role]}${SES.role==='tailor'?' (سليم)':''}</b><div class="muted small num">+966 ${esc(SES.phone)}</div></div></div>
+  return `<div class="stack"><div class="panel acct-head"><div class="av">${IC.user}</div><div><b>${ROLES[SES.role]}${SES.role==='tailor'?' (سليم)':''}</b><div class="muted small"><bdi dir="ltr" class="num">+966 ${esc(SES.phone)}</bdi></div></div></div>
   ${extra.length?`<div class="list">${extra.map(k=>`<button data-act="go" data-id="more" data-sub="${k}"><span class="grow">${ATABS[k]}</span>${IC.chev}</button>`).join('')}</div>`:''}
   <div class="list"><button data-act="logout">${IC.out}<span class="grow">تسجيل الخروج</span></button></div>
   <p class="note demo">نسخة تجريبية لتجربة الصلاحيات. سجّل الخروج لتجربة دور آخر.</p></div>`};
