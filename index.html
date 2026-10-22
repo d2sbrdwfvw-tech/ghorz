@@ -106,7 +106,7 @@ h3{font-size:.98rem;font-weight:600}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
 .fld{display:flex;flex-direction:column;gap:4px;min-width:0}
 .fld>span{font-size:.8rem;color:var(--muted);font-weight:500}
-input[type=text],input[type=tel],input[type=number],input[type=date],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;width:100%}
+input[type=text],input[type=tel],input[type=number],input[type=date],select,textarea{box-sizing:border-box;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0;width:100%}
 textarea{min-height:70px;resize:vertical}
 input[type=number]{direction:ltr;text-align:right}
 .note{font-size:.84rem;padding:10px 12px;border-radius:10px;background:var(--sunk);color:var(--muted);margin:0}
@@ -220,6 +220,20 @@ dl.specs dd{margin:0}
 .dots i,.dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid var(--line);vertical-align:middle}
 .seg .dot{margin-inline-end:6px}
 .fab-origin{font-size:.76rem;color:var(--gold);font-weight:600}
+.map{position:relative;height:280px;border-radius:14px;overflow:hidden;background:var(--sunk);border:1px solid var(--line);touch-action:none;cursor:grab;user-select:none}
+.map.dragging{cursor:grabbing}
+.map .tiles{position:absolute;inset:0}
+.map .tiles img{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;pointer-events:none}
+.map .pin{position:absolute;left:50%;top:50%;width:30px;height:44px;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.3));pointer-events:none;z-index:2}
+.map-ctl{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;z-index:3;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.map-ctl button{width:36px;height:36px;border:0;background:var(--surface);font-size:1.2rem;cursor:pointer;color:var(--ink)}
+.map-ctl button+button{border-top:1px solid var(--line)}
+.map-me{position:absolute;bottom:10px;right:10px;z-index:3;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;font-size:.84rem;cursor:pointer}
+.map-attr{position:absolute;bottom:2px;left:6px;font-size:.62rem;color:#333;background:rgba(255,255,255,.7);padding:0 4px;border-radius:3px;z-index:3;direction:ltr}
+.map-off-msg{display:none;position:absolute;inset:0;z-index:1;place-items:center;text-align:center;padding:24px;color:var(--muted);font-size:.9rem}
+.map.map-off .map-off-msg{display:grid}
+.map-status{font-size:.84rem;color:var(--muted)}
+.map-status.ok{color:var(--good)}.map-status.bad{color:var(--bad)}
 /* design steps */
 .steps{display:flex;gap:6px}
 .steps>*{flex:1;text-align:center;padding:7px 6px;border-radius:999px;background:var(--sunk);color:var(--muted);font-size:.82rem;font-weight:500;border:0;cursor:pointer}
@@ -599,7 +613,7 @@ V.home=()=>{
      <div style="flex:1;min-width:0"><b>ثبّت تطبيق غرز على جوالك</b><div class="muted small">${installEvt?'يفتح بشاشة كاملة مثل أي تطبيق.':'من المتصفح اضغط زر المشاركة، ثم «إضافة إلى الشاشة الرئيسية».'}</div>
      ${installEvt?'<button class="btn sm" data-act="install" style="margin-top:8px">تثبيت</button>':''}</div>
      <button class="icon-btn" data-act="install-hide" aria-label="إخفاء">✕</button></div>`:''}
-   <div class="hero sadu"><div><h2>فصّل ثوبك على مقاسك</h2><p>اختر القماش والتفاصيل وشاهد ثوبك قبل الطلب. توصيل مجاني، وجاهز خلال ${workLabel()}.</p><button class="btn sm" data-act="go" data-id="design">ابدأ التصميم</button></div>
+   <div class="hero sadu"><div><h2>فصّل ثوبك على مقاسك</h2><p>اختر القماش والتفاصيل وشاهد ثوبك قبل الطلب. توصيل مجاني داخل الرياض، وجاهز خلال ${workLabel()}.</p><button class="btn sm" data-act="go" data-id="design">ابدأ التصميم</button></div>
      <span class="logo-1c" style="width:100px;justify-self:center" role="img" aria-label="غرز"></span></div>
    ${act?`<div class="sec-title"><h3>طلبك الحالي</h3><button class="link" data-act="open-order" data-id="${act.id}">التفاصيل</button></div>
      <button class="panel stack" data-act="open-order" data-id="${act.id}" style="gap:8px;text-align:start;cursor:pointer;width:100%">
@@ -671,43 +685,108 @@ V.design=()=>{
   </div>`;
 };
 function cartLines(){return S.cart.map(it=>({...it,unit:unitPrice(it),meters:r2(S.settings.metersPerThobe*it.qty)}))}
-function cartFee(){if(ui.del==='pickup')return 0;const z=S.zones.find(x=>x.id===ui.del&&x.active);return z?H(z.fee):0}
+/* ---------- checkout: cart → address (map or short national address) → payment ---------- */
+const RIYADH={lat:24.7136,lng:46.6753,box:[24.25,46.2,25.25,47.35]};
+const inRiyadh=(lat,lng)=>lat>=RIYADH.box[0]&&lat<=RIYADH.box[2]&&lng>=RIYADH.box[1]&&lng<=RIYADH.box[3];
+const TILE_URL=()=>window.__GHORZ_TILES||'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const MS_NEW={manual:'عندي مقاس',rep:'زيارة مندوب'};
+function newCo(){return{step:1,ms:'saved',profileId:null,repDate:'',repSlot:'',addrMode:'map',lat:RIYADH.lat,lng:RIYADH.lng,z:12,picked:false,short:'',note:''}}
+const co=()=>ui.co||(ui.co=newCo());
+function addrText(a){if(!a)return '';const base=a.mode==='short'?`العنوان الوطني المختصر ${a.short}`:`موقع محدد على الخريطة`;return base+(a.note?` · ${a.note}`:'')}
+function addrLink(a){return a&&a.mode==='map'?`https://www.google.com/maps?q=${a.lat.toFixed(6)},${a.lng.toFixed(6)}`:null}
+function dlvText(o){const d=o.delivery;if(d.address)return addrText(d.address);if(d.type==='pickup')return 'استلام من المحل';const z=d.zoneId?S.zones.find(x=>x.id===d.zoneId):null;return z?z.name:'توصيل'}
+const coSteps=n=>`<div class="steps">${['السلة','العنوان','الدفع'].map((l,i)=>i+1===n?`<span class="on">${'١٢٣'[i]} ${l}</span>`:i+1<n?`<button data-act="co-step" data-id="${i+1}">${'١٢٣'[i]} ${l}</button>`:`<span>${'١٢٣'[i]} ${l}</span>`).join('')}</div>`;
+function coShort(c){c=c||co();const lines=cartLines(),need={};lines.forEach(l=>need[l.fabricId]=r2((need[l.fabricId]||0)+l.meters));return Object.keys(need).filter(id=>avail(fab(id))<need[id])}
+function coMsOk(c){if(c.ms==='rep')return !!(c.repDate&&c.repSlot);return !!S.profiles.find(p=>p.id===c.profileId&&p.status!=='rejected')}
+function coAddrOk(c){return c.addrMode==='short'?/^[A-Z]{4}\d{4}$/.test(c.short):c.picked&&inRiyadh(c.lat,c.lng)}
+
+/* small slippy map (OpenStreetMap tiles), centre pin marks the delivery point */
+function lat2y(lat,z){const r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*256*2**z}
+function lng2x(lng,z){return (lng+180)/360*256*2**z}
+function y2lat(y,z){const n=Math.PI-2*Math.PI*y/(256*2**z);return 180/Math.PI*Math.atan(Math.sinh(n))}
+function x2lng(x,z){return x/(256*2**z)*360-180}
+function mountMap(){
+  const el=document.getElementById('co-map');if(!el)return;const c=co(),tiles=el.querySelector('.tiles');let cx=lng2x(c.lng,c.z),cy=lat2y(c.lat,c.z),errs=0,loads=0;
+  const pool=new Map();
+  function draw(){const w=el.clientWidth,h=el.clientHeight,n=2**c.z,x0=cx-w/2,y0=cy-h/2,keep=new Set();
+    for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+w)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+h)/256);ty++){
+      if(ty<0||ty>=n)continue;const wx=((tx%n)+n)%n,k=c.z+'/'+wx+'/'+ty;keep.add(k);let img=pool.get(k);
+      if(!img){img=new Image();img.alt='';img.draggable=false;img.onerror=()=>{errs++;if(errs>=4&&!loads)el.classList.add('map-off')};img.onload=()=>{loads++;el.classList.remove('map-off')};
+        img.src=TILE_URL().replace('{z}',c.z).replace('{x}',wx).replace('{y}',ty);pool.set(k,img);tiles.appendChild(img)}
+      img.style.transform=`translate(${Math.round(tx*256-x0)}px,${Math.round(ty*256-y0)}px)`}
+    for(const [k,img] of pool)if(!keep.has(k)){img.remove();pool.delete(k)}}
+  function sync(){c.lat=y2lat(cy,c.z);c.lng=x2lng(cx,c.z);const ok=inRiyadh(c.lat,c.lng),s=el.parentElement.querySelector('.map-status');
+    if(s){s.className='map-status '+(c.picked?(ok?'ok':'bad'):'');s.textContent=!c.picked?'حرّك الخريطة حتى يصير الدبوس على موقعك':ok?'الموقع داخل الرياض ✓':'هذا الموقع خارج الرياض. التوصيل داخل الرياض فقط'}}
+  function setZoom(z){z=Math.max(10,Math.min(18,z));if(z===c.z)return;const lat=y2lat(cy,c.z),lng=x2lng(cx,c.z);c.z=z;cx=lng2x(lng,z);cy=lat2y(lat,z);tiles.innerHTML='';pool.clear();draw()}
+  let drag=null;
+  el.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;drag={x:e.clientX,y:e.clientY,cx,cy};el.setPointerCapture(e.pointerId);el.classList.add('dragging')});
+  el.addEventListener('pointermove',e=>{if(!drag)return;cx=drag.cx-(e.clientX-drag.x);cy=drag.cy-(e.clientY-drag.y);draw()});
+  const end=()=>{if(!drag)return;const moved=Math.abs(cx-drag.cx)+Math.abs(cy-drag.cy)>3;drag=null;el.classList.remove('dragging');if(moved)c.picked=true;sync()};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+  el.addEventListener('wheel',e=>{e.preventDefault();setZoom(c.z+(e.deltaY<0?1:-1));sync()},{passive:false});
+  el.querySelector('[data-map="in"]').onclick=()=>{setZoom(c.z+1);sync()};
+  el.querySelector('[data-map="out"]').onclick=()=>{setZoom(c.z-1);sync()};
+  el.querySelector('[data-map="me"]').onclick=()=>{
+    if(!navigator.geolocation)return toast('تحديد الموقع غير متاح في هذا المتصفح','bad');
+    navigator.geolocation.getCurrentPosition(p=>{const {latitude:la,longitude:lo}=p.coords;if(!inRiyadh(la,lo)){toast('موقعك الحالي خارج الرياض. التوصيل داخل الرياض فقط','bad');return}
+      c.z=Math.max(c.z,16);cx=lng2x(lo,c.z);cy=lat2y(la,c.z);tiles.innerHTML='';pool.clear();c.picked=true;draw();sync()},
+      ()=>toast('لم نتمكن من تحديد موقعك. اسمح بالوصول للموقع أو حرّك الخريطة يدوياً','bad'),{enableHighAccuracy:true,timeout:10000})};
+  draw();sync();
+}
+
 V.cart=()=>{
   const conf=ui.lastOrder?S.orders.find(o=>o.id===ui.lastOrder):null;
-  const confirm=conf?`<div class="confirm"><h2>تم استلام طلبك</h2><p style="margin:0">الرقم المرجعي <b class="ref">${conf.ref}</b></p><p class="small" style="margin:0">المدفوع ${money(conf.paid)}${conf.total>conf.paid?` · المتبقي ${money(conf.total-conf.paid)}`:''}</p><p class="small muted" style="margin:0">${conf.measure.ready?'المقاسات معتمدة، وسيبدأ التنفيذ بعد المراجعة.':'لن يبدأ التنفيذ قبل اعتماد المقاسات.'}</p><button class="btn sm" data-act="open-order" data-id="${conf.id}" style="align-self:flex-start">متابعة الطلب</button></div>`:'';
+  const confirm=conf?`<div class="confirm"><h2>تم استلام طلبك</h2><p style="margin:0">الرقم المرجعي <b class="ref">${conf.ref}</b></p><p class="small" style="margin:0">المدفوع ${money(conf.paid)} · التوصيل إلى: ${esc(dlvText(conf))}</p><p class="small muted" style="margin:0">${conf.measure.ready?'المقاسات معتمدة، وسيبدأ التنفيذ بعد المراجعة.':S.profiles.find(p=>p.id===conf.profileId)?.method==='rep'?'سنتواصل معك لتأكيد زيارة المندوب، ويبدأ التفصيل بعد اعتماد المقاسات.':'لن يبدأ التنفيذ قبل اعتماد المقاسات.'}</p><button class="btn sm" data-act="open-order" data-id="${conf.id}" style="align-self:flex-start">متابعة الطلب</button></div>`:'';
   if(!S.cart.length)return `<div class="stack">${confirm}<div class="empty"><p>السلة فارغة.</p><button class="btn" data-act="go" data-id="design">ابدأ التصميم</button></div></div>`;
-  if(!ui.cartProfile||!S.profiles.find(p=>p.id===ui.cartProfile))ui.cartProfile=S.profiles[0]?.id;
-  if(ui.payMode==='deposit'&&!S.settings.allowDeposit)ui.payMode='full';
-  if(ui.del!=='pickup'&&!S.zones.find(z=>z.id===ui.del&&z.active))ui.del='pickup';
-  const lines=cartLines(),fee=cartFee(),t=totals(lines,fee),req=required(t.total,ui.payMode),p=S.profiles.find(x=>x.id===ui.cartProfile);
-  const need={};lines.forEach(l=>need[l.fabricId]=r2((need[l.fabricId]||0)+l.meters));
-  const short=Object.keys(need).filter(id=>avail(fab(id))<need[id]);
-  return `<div class="stack">
+  const c=co(),lines=cartLines(),t=totals(lines,0),short=coShort(c),usable=S.profiles.filter(p=>p.status!=='rejected');
+  if(c.ms==='saved'&&!usable.find(p=>p.id===c.profileId))c.profileId=(usable.find(p=>p.status==='approved')||usable[0])?.id||null;
+  if(c.step===1){
+    const p=S.profiles.find(x=>x.id===c.profileId),tomorrow=new Date(Date.now()+D).toISOString().slice(0,10);
+    return `<div class="stack">${coSteps(1)}
    <div class="panel">${lines.map(l=>{const f=fab(l.fabricId);return`<div class="line"><div class="mini">${thobeSVG(f.hex,l.opts,'front')}</div>
      <div style="min-width:0"><h3>ثوب · ${esc(fabLabel(f))}</h3><div class="muted small">${esc(optSummary(l.opts))}</div>
      <div class="row" style="margin-top:6px"><div class="qty"><button data-act="c-qty" data-id="${l.id}" data-d="-1" aria-label="إنقاص">−</button><span class="num">${l.qty}</span><button data-act="c-qty" data-id="${l.id}" data-d="1" aria-label="زيادة">+</button></div><button class="link" data-act="c-remove" data-id="${l.id}">حذف</button></div></div>
      <b style="white-space:nowrap">${money(l.unit*l.qty)}</b></div>`}).join('')}</div>
-   <label class="fld" for="c-profile"><span>ملف المقاسات</span><select id="c-profile" data-ch="cart-profile">${S.profiles.map(x=>`<option value="${x.id}" ${x.id===ui.cartProfile?'selected':''}>${esc(x.name)} (${METHOD[x.method]})</option>`).join('')}</select></label>
-   ${profileReady(p)?'':'<p class="note warn">المقاسات غير معتمدة بعد. يمكنك الطلب، لكن التنفيذ لا يبدأ قبل اعتمادها.</p>'}
-   <div class="fld"><span>الاستلام</span><div class="radio-list">
-     <label><span><input type="radio" name="del" value="pickup" data-ch="del" ${ui.del==='pickup'?'checked':''}>الاستلام من المحل</span><span class="small">مجاناً</span></label>
-     ${S.zones.filter(z=>z.active).map(z=>`<label><span><input type="radio" name="del" value="${z.id}" data-ch="del" ${ui.del===z.id?'checked':''}>توصيل: ${esc(z.name)}</span><span class="small">مجاناً</span></label>`).join('')}
-   </div></div>
-   ${S.settings.allowDeposit?`<div class="fld"><span>طريقة الدفع</span><div class="radio-list">
-     <label><span><input type="radio" name="pay" value="full" data-ch="pay" ${ui.payMode==='full'?'checked':''}>دفع كامل المبلغ</span></label>
-     <label><span><input type="radio" name="pay" value="deposit" data-ch="pay" ${ui.payMode==='deposit'?'checked':''}>دفع عربون ${S.settings.depositPct}%</span></label>
-   </div></div>`:''}
+   <div class="opt-row"><span class="lbl">المقاسات</span><div class="seg two" role="group" aria-label="المقاسات">
+     <button data-act="co-ms" data-id="saved" aria-pressed="${c.ms==='saved'}">مقاس موجود</button><button data-act="co-ms" data-id="rep" aria-pressed="${c.ms==='rep'}">زيارة مندوب</button></div></div>
+   ${c.ms==='saved'?(usable.length?`<label class="fld" for="co-profile"><span>اختر ملف المقاسات</span><select id="co-profile" data-ch="co" data-k="profileId">${usable.map(x=>`<option value="${x.id}" ${x.id===c.profileId?'selected':''}>${esc(x.name)} · ${x.status==='approved'?'معتمدة':x.status==='review'?'قيد المراجعة':'بانتظار الأخذ'}</option>`).join('')}</select></label>
+       ${p&&!profileReady(p)?'<p class="note warn">هذه المقاسات غير معتمدة بعد. يمكنك الطلب، ويبدأ التفصيل بعد اعتمادها.</p>':''}`
+     :`<p class="note">ما عندك مقاسات محفوظة. أضف مقاساتك أو اختر زيارة مندوب.</p><button class="btn ghost sm" data-act="go" data-id="account" data-sub="measure" data-m="manual" style="align-self:flex-start">أضف مقاساتك</button>`)
+   :`<div class="form-grid"><label class="fld" for="co-repdate"><span>تاريخ الزيارة</span><input type="date" id="co-repdate" min="${tomorrow}" value="${esc(c.repDate)}" data-ch="co" data-k="repDate"></label>
+       <label class="fld" for="co-repslot"><span>الموعد</span><select id="co-repslot" data-ch="co" data-k="repSlot"><option value="">اختر</option>${S.settings.slots.map(s=>`<option ${c.repSlot===s?'selected':''}>${esc(s)}</option>`).join('')}</select></label></div>
+     <p class="note">يزورك المندوب على عنوان التوصيل لأخذ المقاسات، ويبدأ التفصيل بعد اعتمادها. الموعد يتأكد بعد موافقة الإدارة.</p>`}
+   <div class="panel"><div class="bill"><span class="tot" style="border:0;padding:0;margin:0">الإجمالي</span><span class="tot" style="border:0;padding:0;margin:0">${money(t.total)}</span></div></div>
+   ${short.length?`<p class="note bad">الكمية المتاحة لا تكفي من: ${short.map(id=>esc(fabLabel(fab(id)))).join('، ')}</p>`:''}
+   <button class="btn wide" data-act="co-next" ${short.length?'disabled':''}>متابعة إلى العنوان</button></div>`}
+  if(c.step===2)return `<div class="stack">${coSteps(2)}
+   <p class="note good">التوصيل مجاني داخل الرياض فقط.</p>
+   <div class="seg two" role="group" aria-label="طريقة تحديد العنوان"><button data-act="co-addr" data-id="map" aria-pressed="${c.addrMode==='map'}">تحديد على الخريطة</button><button data-act="co-addr" data-id="short" aria-pressed="${c.addrMode==='short'}">العنوان الوطني المختصر</button></div>
+   ${c.addrMode==='map'?`<div class="stack" style="gap:8px">
+     <div class="map" id="co-map"><div class="tiles"></div>
+       <svg class="pin" viewBox="0 0 24 36" aria-hidden="true"><path d="M12 35s10-12.6 10-22A10 10 0 0 0 2 13c0 9.4 10 22 10 22z" fill="#483127"/><circle cx="12" cy="13" r="4.2" fill="#EEE6DB"/></svg>
+       <div class="map-ctl"><button data-map="in" aria-label="تكبير">+</button><button data-map="out" aria-label="تصغير">−</button></div>
+       <button class="map-me" data-map="me">موقعي الحالي</button>
+       <div class="map-off-msg">تعذّر تحميل الخريطة هنا. استخدم «العنوان الوطني المختصر».</div>
+       <span class="map-attr">© OpenStreetMap</span></div>
+     <span class="map-status"></span></div>`
+   :`<label class="fld" for="co-short"><span>العنوان الوطني المختصر</span><input type="text" id="co-short" value="${esc(c.short)}" maxlength="8" placeholder="مثال: RRRD2929" autocapitalize="characters" autocomplete="off" style="direction:ltr;text-align:center;letter-spacing:.2em;font-size:1.15rem;text-transform:uppercase"><small class="muted">٤ أحرف إنجليزية ثم ٤ أرقام. تجده في تطبيق «سبل» أو موقع العنوان الوطني.</small></label>`}
+   <label class="fld" for="co-note"><span>تفاصيل إضافية (اختياري)</span><input type="text" id="co-note" value="${esc(c.note)}" placeholder="رقم الشقة، لون الباب، أقرب معلم"></label>
+   <div class="row"><button class="btn ghost" data-act="co-step" data-id="1">رجوع</button><button class="btn" data-act="co-next" style="flex:1">متابعة إلى الدفع</button></div></div>`;
+  const p=c.ms==='saved'?S.profiles.find(x=>x.id===c.profileId):null,a=c.addrMode==='short'?{mode:'short',short:c.short,note:c.note}:{mode:'map',lat:c.lat,lng:c.lng,note:c.note};
+  return `<div class="stack">${coSteps(3)}
+   <div class="panel stack" style="gap:10px">
+     <div class="spread"><span><span class="muted small">التوصيل إلى</span><br><b>${esc(addrText(a))}</b></span><button class="link" data-act="co-step" data-id="2">تعديل</button></div>
+     <div class="spread"><span><span class="muted small">المقاسات</span><br><b>${c.ms==='rep'?`زيارة مندوب · <span class="num">${esc(c.repDate)}</span> · <span class="num">${esc(c.repSlot)}</span>`:esc(p?p.name:'')}</b></span><button class="link" data-act="co-step" data-id="1">تعديل</button></div>
+     <div class="spread"><span><span class="muted small">الطلب</span><br><b>${lines.reduce((s,l)=>s+l.qty,0)} ثوب</b></span><button class="link" data-act="co-step" data-id="1">تعديل</button></div></div>
    <div class="panel"><div class="bill">
-     <span>المجموع</span><span>${money(t.sub)}</span><span>التوصيل</span><span>مجاناً</span>
+     <span>المجموع</span><span>${money(t.sub)}</span><span>التوصيل داخل الرياض</span><span>مجاناً</span>
      ${t.incl?'':vatRow(t.vat,false)}
      <span class="tot">الإجمالي</span><span class="tot">${money(t.total)}</span>
-     ${t.incl?vatRow(t.vat,true):''}
-     ${req<t.total?`<span>المطلوب الآن</span><span><b>${money(req)}</b></span><span>المتبقي عند الاستلام</span><span>${money(t.total-req)}</span>`:''}</div></div>
-   <p class="note good">التوصيل مجاني، ويجهز طلبك خلال ${workLabel()} من اعتماد المقاسات. التسليم المتوقع ${fdate.format(addWorkDays(Date.now(),S.settings.dueDays))}.</p>
-   <p class="note demo">الدفع محاكاة ولا يُخصم أي مبلغ. نسبة الضريبة تُعتمد بعد التحقق النظامي.</p>
-   ${short.length?`<p class="note bad">الكمية المتاحة لا تكفي من: ${short.map(id=>esc(fab(id).code)).join('، ')}</p>`:''}
-   <button class="btn wide" data-act="pay" ${short.length||!p?'disabled':''}>ادفع ${money(req)}</button>
-  </div>`;
+     ${t.incl?vatRow(t.vat,true):''}</div></div>
+   <p class="note good">يجهز طلبك خلال ${workLabel()} من اعتماد المقاسات. التسليم المتوقع ${fdate.format(addWorkDays(Date.now(),S.settings.dueDays))}.</p>
+   <p class="note demo">الدفع محاكاة ولا يُخصم أي مبلغ.</p>
+   ${short.length?`<p class="note bad">الكمية المتاحة لا تكفي من: ${short.map(id=>esc(fabLabel(fab(id)))).join('، ')}</p>`:''}
+   <button class="btn wide" data-act="pay" ${short.length?'disabled':''}>ادفع ${money(t.total)}</button></div>`;
 };
 V.account=()=>`<div class="stack">
   <div class="panel row"><div style="width:48px;height:48px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center">${IC.user}</div>
@@ -732,11 +811,12 @@ V.order=id=>{const o=S.orders.find(x=>x.id===id);if(!o)return'<p class="empty">�
   <div class="panel">${o.items.map(it=>{const f=fab(it.fabricId);return`<div class="line"><div class="mini">${thobeSVG(f.hex,it.opts,'front')}</div><div style="min-width:0"><h3>${it.qty} × ثوب ${esc(fabLabel(f))}</h3><div class="muted small">${esc(f.color)} · ${esc(optSummary(it.opts))}</div></div><b>${money(it.unit*it.qty)}</b></div>`}).join('')}</div>
   <div class="panel"><dl class="kv"><dt>المجموع</dt><dd>${money(o.sub)}</dd><dt>التوصيل</dt><dd>${o.delivery.fee?money(o.delivery.fee):'مجاناً'}</dd>${o.total===o.sub+(o.delivery.fee||0)?'':`<dt>الضريبة</dt><dd>${money(o.vat)}</dd>`}
    <dt><b>الإجمالي</b></dt><dd><b>${money(o.total)}</b></dd>${o.total===o.sub+(o.delivery.fee||0)?`<dt class="small">شامل الضريبة</dt><dd class="small">${money(o.vat)}</dd>`:''}<dt>المدفوع</dt><dd>${money(o.paid)}</dd><dt>المتبقي</dt><dd><b>${money(o.total-o.paid)}</b></dd>
-   <dt>الاستلام</dt><dd>${o.delivery.type==='pickup'?'من المحل':esc(zone?zone.name:'توصيل')}</dd>
+   <dt>التوصيل إلى</dt><dd>${esc(dlvText(o))}</dd>
    <dt>حالة التسليم</dt><dd>${o.delivery.status==='delivered'?'تم '+fdate.format(o.delivery.date):'لم يُسلّم بعد'}</dd></dl></div></div>`};
 V.measure=()=>{
   const book=id=>S.bookings.find(b=>b.id===id);
   const status=p=>{if(p.status==='approved')return'<span class="pill good">معتمدة</span>';if(p.status==='review')return'<span class="pill acc">قيد المراجعة</span>';if(p.status==='rejected')return'<span class="pill bad">تحتاج إعادة قياس</span>';if(p.method==='rep'){const b=book(p.bookingId);return b?`<span class="pill ${BOOK[b.status][1]}">${BOOK[b.status][0]}</span>`:''}if(p.method==='thobe')return'<span class="pill warn">بانتظار الثوب</span>';return'<span class="pill warn">ناقصة</span>'};
+  if(!MS_NEW[ui.mMethod])ui.mMethod='manual';
   const mm=ui.mMethod,tomorrow=new Date(Date.now()+D).toISOString().slice(0,10);
   let form='';
   if(mm==='manual')form=`<div class="guide">${guideSVG()}<p class="muted small" style="margin:4px 8px 6px">رسم توضيحي تجريبي، تُستبدل به صور حقيقية لاحقاً.</p></div>
@@ -753,7 +833,7 @@ V.measure=()=>{
      ${p.method==='manual'?`<div class="vals">${MFIELDS.map(([k,l])=>`<span>${l}: <span class="num">${p.values[k]??'—'}</span></span>`).join('')}</div>`:''}</div>`).join('')}
    <div class="panel stack"><h2>ملف مقاسات جديد</h2>
      <label class="fld" for="m-name"><span>اسم الملف</span><input type="text" id="m-name" placeholder="مثلاً: ثياب الدوام"></label>
-     <div class="seg" role="group" aria-label="طريقة أخذ المقاسات" style="align-self:stretch;display:flex">${Object.entries(METHOD).map(([k,l])=>`<button data-act="m-method" data-id="${k}" aria-pressed="${mm===k}" style="flex:1">${l}</button>`).join('')}</div>
+     <div class="seg" role="group" aria-label="طريقة أخذ المقاسات" style="align-self:stretch;display:flex">${Object.entries(MS_NEW).map(([k,l])=>`<button data-act="m-method" data-id="${k}" aria-pressed="${mm===k}" style="flex:1">${l}</button>`).join('')}</div>
      ${form}
      <button class="btn wide" data-act="m-save">${mm==='rep'?'إرسال طلب الحجز':'حفظ الملف'}</button></div>
    ${S.bookings.length?`<h3>حجوزات المندوب</h3>${S.bookings.map(b=>`<div class="panel spread"><div><b class="num">${esc(b.date)}</b> · <span class="num">${esc(b.slot)}</span><div class="muted small">${esc(b.city)} · ${esc(b.address)}</div></div><span class="pill ${BOOK[b.status][1]}">${BOOK[b.status][0]}</span></div>`).join('')}`:''}
@@ -833,7 +913,7 @@ function orderDetail(o){
       <dt>الملف</dt><dd>${p?esc(p.name)+' · '+METHOD[p.method]:'—'}</dd>
       <dt>الحالة</dt><dd>${o.measure.ready?'<span class="pill good">معتمدة</span>':p?`<span class="pill ${MST[p.status][1]}">${MST[p.status][0]}</span>`:'<span class="pill warn">غير معتمدة</span>'}</dd>
       ${bk?`<dt>حجز المندوب</dt><dd><span class="pill ${BOOK[bk.status][1]}">${BOOK[bk.status][0]}</span></dd>`:''}
-      <dt>التسليم</dt><dd>${o.delivery.type==='pickup'?'من المحل':esc(zone?zone.name:'توصيل')}</dd>
+      <dt>التوصيل إلى</dt><dd>${esc(dlvText(o))}${addrLink(o.delivery.address)?`<br><a class="link" href="${addrLink(o.delivery.address)}" target="_blank" rel="noopener">فتح في الخرائط</a>`:''}</dd>
       <dt>حالة التسليم</dt><dd>${o.delivery.status==='delivered'?'تم '+fdt.format(o.delivery.date):'لم يُسلّم'}</dd></dl>
       ${p?`<button class="btn sm ${o.measure.ready?'ghost':''}" data-act="open-measure" data-id="${p.id}" style="align-self:flex-start">${o.measure.ready?'عرض المقاسات':'فتح ملف المقاسات'}</button>`:''}
       ${o.stage===8&&o.delivery.status!=='delivered'&&canPay?`<button class="btn sm" data-act="o-deliver" data-id="${o.id}">تسجيل التسليم الآن</button>`:''}</div>
@@ -895,7 +975,7 @@ A.settings=()=>{const s=S.settings;return `<div class="stack">
     ${GROUPS.map(([g,l])=>S.options[g].map(o=>`<label class="fld"><span>${l}: ${esc(o.name)}</span>${numIn(`options.${g}.${o.id}.price`,o.price,'سعر '+l+' '+o.name)}</label>`).join('')).join('')}</div>
     <p class="muted small" style="margin:0">سعر الثوب = سعر القماش (شامل التفصيل) + رسوم التفصيل إن وُجدت + إضافات الخيارات.</p></div>
   <div class="panel stack"><h2>سعر الثوب لكل قماش (شامل التفصيل)</h2><div class="form-grid">${S.fabrics.filter(isActive).map(f=>`<label class="fld"><span>${esc(fabLabel(f))}</span>${numIn(`fabrics.${f.id}.price`,f.price,'سعر قماش '+f.code)}</label>`).join('')}</div></div>
-  <div class="panel stack"><h2>مناطق التوصيل</h2><p class="muted small" style="margin:0">التوصيل مجاني لكل المناطق المفعّلة.</p>${S.zones.map(z=>`<label class="check"><input type="checkbox" data-path="zones.${z.id}.active" data-label="تفعيل ${esc(z.name)}" ${z.active?'checked':''}> ${esc(z.name)}</label>`).join('')}</div>
+  <div class="panel stack"><h2>التوصيل</h2><p class="muted small" style="margin:0">التوصيل مجاني داخل الرياض فقط. يحدد العميل موقعه على الخريطة أو بالعنوان الوطني المختصر، ويظهر العنوان في تفاصيل الطلب.</p></div>
   <div class="panel stack"><h2>البيانات التجريبية</h2>${ui.confirm==='reset'?`<p class="note bad">ستُحذف كل التغييرات وتعود البيانات الأولية.</p><div class="row"><button class="btn danger sm" data-act="reset-yes">تأكيد</button><button class="btn ghost sm" data-act="confirm-no">تراجع</button></div>`:`<button class="btn ghost" data-act="reset">إعادة ضبط البيانات التجريبية</button>`}</div>
  </div>`};
 function logLi(l){return `<li><span class="meta"><time class="num">${fdt.format(l.t)}</time><span class="pill">${esc(l.kind)}</span></span><span>${esc(l.text)}</span></li>`}
@@ -1021,6 +1101,7 @@ function screen(){
   if(ui.sub&&ui.sub.startsWith('season:'))return V.season(ui.sub.slice(7));
   return V[ui.tab]();
 }
+function afterRender(){try{mountMap()}catch(e){}}
 function render(){
   const app=$('#app');app.classList.toggle('staff-app',isStaffApp());
   if(!SES){app.innerHTML=loginView();return}
@@ -1032,6 +1113,7 @@ function render(){
      <h1>${esc(titleFor())}</h1><span class="demo-badge">${isStaff()?ROLES[SES.role]+' · ':''}تجريبي</span></div></header>
    <main class="pad ${nav.length<2?'no-nav':''}">${screen()}</main>
    ${nav.length>1?`<nav class="tabbar" aria-label="التنقل"><div class="in">${nav.map(([k,l,ic])=>`<button data-act="go" data-id="${k}" aria-current="${ui.tab===k?'page':'false'}">${ic}<span>${l}</span>${k==='cart'&&cartN?`<span class="badge num">${cartN}</span>`:''}${k==='measures'&&isStaff()&&canApproveMs()&&S.profiles.some(p=>p.status==='review')?`<span class="badge num">${S.profiles.filter(p=>p.status==='review').length}</span>`:''}</button>`).join('')}</div></nav>`:''}`;
+  afterRender();
 }
 
 /* ---------- actions ---------- */
@@ -1060,6 +1142,18 @@ const ACT={
  'd-view':id=>{ui.d.view=id},
  'd-zoom':id=>{ui.d.zoom=Math.min(2,Math.max(1,r2(ui.d.zoom+(+id)*.25)))},
  'd-qty':id=>{ui.d.qty=Math.min(20,Math.max(1,ui.d.qty+(+id)))},
+ 'co-step':id=>{co().step=+id;toTop()},
+ 'co-ms':id=>{co().ms=id},
+ 'co-addr':id=>{const c=co();const n=$('#co-note');if(n)c.note=n.value.trim();const sh=$('#co-short');if(sh)c.short=sh.value.trim().toUpperCase();c.addrMode=id},
+ 'co-next':()=>{const c=co();
+   if(c.step===1){if(c.ms==='rep'){c.repDate=$('#co-repdate').value;c.repSlot=$('#co-repslot').value;const tm=new Date(Date.now()+D).toISOString().slice(0,10);
+       if(!c.repDate||c.repDate<tm)return toast('اختر تاريخ زيارة من الغد فصاعداً','bad');if(!c.repSlot)return toast('اختر موعد الزيارة','bad')}
+     else if(!coMsOk(c))return toast('اختر ملف المقاسات، أو اختر زيارة مندوب','bad');
+     c.step=2;toTop();return}
+   if(c.step===2){c.note=($('#co-note')?.value||'').trim();
+     if(c.addrMode==='short'){c.short=$('#co-short').value.replace(/\s/g,'').toUpperCase();if(!/^[A-Z]{4}\d{4}$/.test(c.short))return toast('العنوان المختصر: ٤ أحرف إنجليزية ثم ٤ أرقام، مثل RRRD2929','bad')}
+     else{if(!c.picked)return toast('حرّك الخريطة حتى يصير الدبوس على موقعك، أو اضغط «موقعي الحالي»','bad');if(!inRiyadh(c.lat,c.lng))return toast('الموقع خارج الرياض. التوصيل داخل الرياض فقط','bad')}
+     c.step=3;toTop()}},
  'add-cart':()=>{const d=ui.d;if(!orderable(fab(d.fabricId),d.qty))return toast('هذا القماش غير متاح للطلب حالياً','bad');S.cart.push({id:'i'+Date.now(),fabricId:d.fabricId,opts:{...d.opts},qty:d.qty});save();toast('أُضيف إلى السلة')},
  'c-qty':(id,b)=>{const it=S.cart.find(x=>x.id===id);it.qty=Math.min(20,Math.max(1,it.qty+(+b.dataset.d)));save()},
  'c-remove':id=>{S.cart=S.cart.filter(x=>x.id!==id);save()},
@@ -1074,15 +1168,22 @@ const ACT={
      S.profiles.push({id:'p'+now,name,owner:'عميل تجريبي',phone:SES.phone,method:'rep',values:{},status:'awaiting',bookingId:b.id,updated:now,history:[]});log('حجز',`طلب زيارة مندوب ${b.city} ${date} ${b.slot}`)}
    save();toTop();toast(ui.mMethod==='rep'?'أُرسل طلب الحجز، بانتظار موافقة الإدارة':ui.mMethod==='manual'?'أُرسلت المقاسات للمراجعة':'حُفظ ملف المقاسات')},
  pay:()=>{
+   const c=co();if(c.step!==3||!coMsOk(c)||!coAddrOk(c))return toast('أكمل خطوات العنوان والمقاسات أولاً','bad');
    const lines=cartLines(),need={};lines.forEach(l=>need[l.fabricId]=r2((need[l.fabricId]||0)+l.meters));
-   for(const id in need){const f=fab(id);if(avail(f)<need[id])return toast(`الكمية المتاحة من ${f.code} لا تكفي`,'bad')}
-   const fee=cartFee(),t=totals(lines,fee),req=required(t.total,ui.payMode),p=S.profiles.find(x=>x.id===ui.cartProfile),now=Date.now(),n=S.seq++;
-   const o={id:'o'+n,ref:'TH-'+n,created:now,due:addWorkDays(now,S.settings.dueDays),customer:'عميل تجريبي',items:lines.map(({id,...l})=>l),profileId:p.id,measure:{ready:profileReady(p)},
-     delivery:{type:ui.del==='pickup'?'pickup':'zone',zoneId:ui.del==='pickup'?null:ui.del,fee,status:'pending',date:null},sub:t.sub,vat:t.vat,total:t.total,payMode:ui.payMode,required:req,paid:req,
-     payments:[{t:now,amount:req,note:ui.payMode==='deposit'?'عربون عند الطلب (محاكاة)':'دفع كامل عند الطلب (محاكاة)'}],stage:0,stageTimes:[now],tailorId:null,qc:'',reserved:need,consumed:{},cancelled:false};
+   for(const id in need){const f=fab(id);if(avail(f)<need[id])return toast(`الكمية المتاحة من ${fabLabel(f)} لا تكفي`,'bad')}
+   const t=totals(lines,0),now=Date.now(),n=S.seq++,ref='TH-'+n;
+   const address=c.addrMode==='short'?{mode:'short',short:c.short,note:c.note}:{mode:'map',lat:+c.lat.toFixed(6),lng:+c.lng.toFixed(6),note:c.note};
+   let p;
+   if(c.ms==='rep'){const b={id:'b'+now,city:'الرياض',address:addrText(address),addr:address,date:c.repDate,slot:c.repSlot,status:'pending',created:now};S.bookings.push(b);
+     p={id:'p'+now,name:'زيارة مندوب · '+ref,owner:'عميل تجريبي',phone:SES.phone,method:'rep',values:{},status:'awaiting',bookingId:b.id,updated:now,history:[]};S.profiles.push(p);
+     log('حجز',`${ref}: طلب زيارة مندوب ${c.repDate} ${c.repSlot}`)}
+   else p=S.profiles.find(x=>x.id===c.profileId);
+   const o={id:'o'+n,ref,created:now,due:addWorkDays(now,S.settings.dueDays),customer:'عميل تجريبي',items:lines.map(({id,...l})=>l),profileId:p.id,measure:{ready:profileReady(p)},
+     delivery:{type:'delivery',address,fee:0,status:'pending',date:null},sub:t.sub,vat:t.vat,total:t.total,payMode:'full',required:t.total,paid:t.total,
+     payments:[{t:now,amount:t.total,note:'دفع كامل عند الطلب (محاكاة)'}],stage:0,stageTimes:[now],tailorId:null,qc:'',reserved:need,consumed:{},cancelled:false};
    for(const id in need){const f=fab(id);f.reserved=r2(f.reserved+need[id]);log('مخزون',`حجز ${need[id]} م من ${f.code} للطلب ${o.ref}`)}
-   S.orders.push(o);log('طلب',`طلب جديد ${o.ref} بقيمة ${(t.total/100).toFixed(2)} ر.س`);log('دفع',`${o.ref}: استلام ${(req/100).toFixed(2)} ر.س (${o.payments[0].note})`);
-   S.cart=[];ui.lastOrder=o.id;save();toTop()},
+   S.orders.push(o);log('طلب',`طلب جديد ${o.ref} بقيمة ${(t.total/100).toFixed(2)} ر.س · ${addrText(address)}`);log('دفع',`${o.ref}: استلام ${(t.total/100).toFixed(2)} ر.س (دفع كامل، محاكاة)`);
+   S.cart=[];ui.co=null;ui.lastOrder=o.id;save();toTop()},
  'toggle-order':id=>{ui.openOrder=ui.openOrder===id?null:id;ui.confirm=null},
  'o-filter':id=>{ui.oFilter=id},
  'ms-filter':id=>{ui.msFilter=id;ui.openMeasure=null;ui.confirm=null},
@@ -1144,8 +1245,7 @@ const ACT={
 };
 const CH={
  filter:t=>{ui.flt[t.dataset.k]=t.value},
- 'cart-profile':t=>{ui.cartProfile=t.value},
- del:t=>{ui.del=t.value},
+ co:t=>{co()[t.dataset.k]=t.value},
  pay:t=>{ui.payMode=t.value},
  tailor:t=>{const o=ord(t.dataset.id);o.tailorId=t.value||null;log('طلب',`${o.ref}: تعيين الخياط ${t.value?S.tailors.find(x=>x.id===t.value).name:'—'}`);save()},
  qc:t=>{const o=ord(t.dataset.id);o.qc=t.value;log('طلب',`${o.ref}: ملاحظة فحص الجودة`);save()},
