@@ -820,7 +820,6 @@ V.home=()=>{
   const act=myOrders().find(o=>!o.cancelled&&o.stage<9);
   const mpt=S.settings.metersPerThobe;
   return `<div class="stack">
-   <div><h2>أهلاً بك</h2><p class="muted small" style="margin:2px 0 0">ماذا تريد أن تفصّل اليوم؟</p></div>
    ${installable()&&(installEvt||isIOS())?`<div class="panel row" style="gap:12px;align-items:flex-start"><span class="logo" style="width:40px;flex:none" aria-hidden="true"></span>
      <div style="flex:1;min-width:0"><b>ثبّت تطبيق غرز على جوالك</b><div class="muted small">${installEvt?'يفتح بشاشة كاملة مثل أي تطبيق.':'من المتصفح اضغط زر المشاركة، ثم «إضافة إلى الشاشة الرئيسية».'}</div>
      ${installEvt?'<button class="btn sm" data-act="install" style="margin-top:8px">تثبيت</button>':''}</div>
