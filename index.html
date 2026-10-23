@@ -60,6 +60,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .appbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
 .appbar .pad{display:flex;align-items:center;gap:8px;min-height:54px;padding-block:6px}
 .appbar h1{font-family:var(--f-display);font-size:1.2rem;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar h1.bar-logo{display:flex;align-items:center}.appbar h1.bar-logo .logo{width:38px}
+.appbar .wa-btn{color:var(--accent);background:var(--accent-soft);border-radius:12px;text-decoration:none}.appbar .wa-btn svg{width:22px;height:22px}
 .icon-btn{background:none;border:0;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;cursor:pointer;color:var(--ink);flex:none}
 .icon-btn:hover{background:var(--sunk)}
 .icon-btn svg{width:22px;height:22px}
@@ -393,6 +395,7 @@ const D=864e5;
 /* ---------- icons ---------- */
 const I=(d,extra='')=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 const IC={
+ headset:I('<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="13" width="4.5" height="6.5" rx="1.6"/><rect x="16.5" y="13" width="4.5" height="6.5" rx="1.6"/><path d="M19 19.5c0 1.6-1.5 2.5-3.5 2.5H13"/>'),
  home:I('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
  fabric:I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/>'),
  design:I('<path d="M9 3l-5 3 2 5 2-1v11h8V10l2 1 2-5-5-3"/><path d="M9 3a3 3 0 006 0"/>'),
@@ -822,7 +825,7 @@ V.home=()=>{
      <div style="flex:1;min-width:0"><b>ثبّت تطبيق غرز على جوالك</b><div class="muted small">${installEvt?'يفتح بشاشة كاملة مثل أي تطبيق.':'من المتصفح اضغط زر المشاركة، ثم «إضافة إلى الشاشة الرئيسية».'}</div>
      ${installEvt?'<button class="btn sm" data-act="install" style="margin-top:8px">تثبيت</button>':''}</div>
      <button class="icon-btn" data-act="install-hide" aria-label="إخفاء">✕</button></div>`:''}
-   <div class="hero sadu"><div><h2>فصّل ثوبك على مقاسك</h2><p>اختر القماش والتفاصيل وشاهد ثوبك قبل الطلب. توصيل مجاني داخل الرياض، وجاهز خلال ${workLabel()}.</p><button class="btn sm" data-act="go" data-id="design">ابدأ التصميم</button></div>
+   <div class="hero sadu"><div><h2>فصّل ثوبك على مقاسك</h2><p>اختر القماش والتفاصيل وشاهد ثوبك قبل الطلب. توصيل مجاني داخل الرياض، وجاهز خلال ${workLabel()}.</p><button class="btn sm" data-act="go" data-id="store">اختر قماشك</button></div>
      <span class="logo-1c" style="width:100px;justify-self:center" role="img" aria-label="غرز"></span></div>
    ${act?`<div class="sec-title"><h3>طلبك الحالي</h3><button class="link" data-act="open-order" data-id="${act.id}">التفاصيل</button></div>
      <button class="panel stack" data-act="open-order" data-id="${act.id}" style="gap:8px;text-align:start;cursor:pointer;width:100%">
@@ -1192,6 +1195,7 @@ A.settings=()=>{const s=S.settings;return `<div class="stack">
     ${GROUPS.map(([g,l])=>S.options[g].map(o=>`<label class="fld"><span>${l}: ${esc(o.name)}</span>${numIn(`options.${g}.${o.id}.price`,o.price,'سعر '+l+' '+o.name)}</label>`).join('')).join('')}</div>
     <p class="muted small" style="margin:0">سعر الثوب = سعر القماش (شامل التفصيل) + رسوم التفصيل إن وُجدت + إضافات الخيارات.</p></div>
   <div class="panel stack"><h2>سعر الثوب لكل قماش (شامل التفصيل)</h2><div class="form-grid">${S.fabrics.filter(isActive).map(f=>`<label class="fld"><span>${esc(fabLabel(f))}</span>${numIn(`fabrics.${f.id}.price`,f.price,'سعر قماش '+f.code)}</label>`).join('')}</div></div>
+  <div class="panel stack"><h2>خدمة العملاء</h2><label class="fld"><span>رقم واتساب خدمة العملاء</span><input type="tel" inputmode="numeric" dir="ltr" data-path="settings.whatsapp" data-kind="text" data-label="رقم واتساب" value="${esc(s.whatsapp||WA_DEFAULT)}" placeholder="05XXXXXXXX"></label><p class="muted small" style="margin:0">يظهر زر السماعة أعلى كل صفحة في تطبيق العملاء ويفتح محادثة واتساب على هذا الرقم.</p></div>
   <div class="panel stack"><h2>التوصيل</h2><p class="muted small" style="margin:0">التوصيل مجاني داخل الرياض فقط. يحدد العميل موقعه على الخريطة أو بالعنوان الوطني المختصر، ويظهر العنوان في تفاصيل الطلب.</p></div>
   <div class="panel stack"><h2>البيانات التجريبية</h2>${ui.confirm==='reset'?`<p class="note bad">ستُحذف كل التغييرات وتعود البيانات الأولية.</p><div class="row"><button class="btn danger sm" data-act="reset-yes">تأكيد</button><button class="btn ghost sm" data-act="confirm-no">تراجع</button></div>`:`<button class="btn ghost" data-act="reset">إعادة ضبط البيانات التجريبية</button>`}</div>
  </div>`};
@@ -1300,10 +1304,14 @@ A.measures=()=>{
 };
 
 /* ---------- navigation ---------- */
-const CUST_NAV=[['home','الرئيسية',IC.home],['store','الأقمشة',IC.fabric],['design','التصميم',IC.design],['cart','السلة',IC.bag],['account','حسابي',IC.user]];
+const CUST_NAV=[['home','الرئيسية',IC.home],['store','الأقمشة',IC.fabric],['cart','السلة',IC.bag],['account','حسابي',IC.user]];
 const ADM_ICON={overview:IC.chart,orders:IC.list,measures:IC.ruler,inventory:IC.box,reps:IC.cal,more:IC.more};
 const ADM_LABEL={overview:'نظرة عامة',orders:'الطلبات',measures:'المقاسات',inventory:'المخزون',reps:'المندوبون',more:'المزيد'};
 function adminNav(){const t=ROLE_TABS[SES.role];return['overview','orders','measures','inventory','reps'].filter(k=>t.includes(k)).slice(0,4)}
+// WhatsApp customer support: number set by the manager in the staff app (falls back to WA_DEFAULT)
+const WA_DEFAULT='';
+const waNum=()=>{let n=String((S.settings&&S.settings.whatsapp)||WA_DEFAULT).replace(/\D/g,'');if(n.startsWith('00'))n=n.slice(2);if(n.startsWith('0'))n=n.slice(1);if(/^5\d{8}$/.test(n))n='966'+n;return /^9665\d{8}$/.test(n)?n:''};
+const waLink=()=>waNum()?`https://wa.me/${waNum()}?text=${encodeURIComponent('السلام عليكم، أحتاج مساعدة بخصوص تفصيل ثوب من غرز')}`:'#';
 function titleFor(){
   if(isStaff()){if(ui.sub)return ATABS[ui.sub];return ui.tab==='more'?'المزيد':ATABS[ui.tab]}
   if(ui.sub==='orders')return'طلباتي';if(ui.sub==='measure')return'المقاسات';
@@ -1326,10 +1334,11 @@ function render(){
   if(isStaff()&&!nav.some(n=>n[0]===ui.tab))ui.tab=nav[0][0];
   const cartN=S.cart.reduce((a,i)=>a+i.qty,0);
   app.innerHTML=`<header class="appbar"><div class="pad">
-     ${ui.sub?`<button class="icon-btn" data-act="back" aria-label="رجوع">${IC.back}</button>`:''}
-     <h1>${esc(titleFor())}</h1><span class="demo-badge">${isStaff()?ROLES[SES.role]+' · ':''}تجريبي</span></div></header>
+     ${ui.sub?`<button class="icon-btn" data-act="back" aria-label="رجوع">${IC.back}</button>`:!isStaff()&&ui.tab==='design'?`<button class="icon-btn" data-act="go" data-id="store" aria-label="رجوع للأقمشة">${IC.back}</button>`:''}
+     ${!isStaff()&&ui.tab==='home'&&!ui.sub?`<h1 class="bar-logo"><span class="logo" role="img" aria-label="غرز"></span></h1>`:`<h1>${esc(titleFor())}</h1>`}<span class="demo-badge">${isStaff()?ROLES[SES.role]+' · ':''}تجريبي</span>
+     ${isStaff()?'':`<a class="icon-btn wa-btn" href="${waLink()}" target="_blank" rel="noopener" data-act="wa" aria-label="تواصل معنا عبر واتساب">${IC.headset}</a>`}</div></header>
    <main class="pad ${nav.length<2?'no-nav':''}">${screen()}</main>
-   ${nav.length>1?`<nav class="tabbar" aria-label="التنقل"><div class="in">${nav.map(([k,l,ic])=>`<button data-act="go" data-id="${k}" aria-current="${ui.tab===k?'page':'false'}">${ic}<span>${l}</span>${k==='cart'&&cartN?`<span class="badge num">${cartN}</span>`:''}${k==='measures'&&isStaff()&&canApproveMs()&&S.profiles.some(p=>p.status==='review')?`<span class="badge num">${S.profiles.filter(p=>p.status==='review').length}</span>`:''}</button>`).join('')}</div></nav>`:''}`;
+   ${nav.length>1?`<nav class="tabbar" aria-label="التنقل"><div class="in">${nav.map(([k,l,ic])=>`<button data-act="go" data-id="${k}" aria-current="${ui.tab===k||(k==='store'&&ui.tab==='design')?'page':'false'}">${ic}<span>${l}</span>${k==='cart'&&cartN?`<span class="badge num">${cartN}</span>`:''}${k==='measures'&&isStaff()&&canApproveMs()&&S.profiles.some(p=>p.status==='review')?`<span class="badge num">${S.profiles.filter(p=>p.status==='review').length}</span>`:''}</button>`).join('')}</div></nav>`:''}`;
   afterRender();
 }
 
@@ -1338,6 +1347,7 @@ const ord=id=>S.orders.find(o=>o.id===id);
 function setPath(path,val){const p=path.split('.');let o=S;for(let i=0;i<p.length-1;i++)o=Array.isArray(o)?o.find(x=>x.id===p[i]):o[p[i]];const k=p[p.length-1],old=o[k];o[k]=val;return old}
 const toTop=()=>window.scrollTo(0,0);
 const ACT={
+ 'wa':(id,b,e)=>{if(!waNum()){e.preventDefault();toast('رقم واتساب خدمة العملاء لم يُضف بعد','bad')}return false},
  'login-role':id=>{ui.login.phone=$('#ph').value;ui.login.role=id},
  'login-send':()=>{let v=$('#ph').value.replace(/\D/g,'');if(v.startsWith('0'))v=v.slice(1);if(!/^5\d{8}$/.test(v))return toast('أدخل رقم جوال سعودي يبدأ بـ 5 (9 أرقام)','bad');ui.login.phone=v;ui.login.step='otp';setTimeout(()=>$('#otp')?.focus(),50)},
  'otp-back':()=>{ui.login.step='phone'},
