@@ -62,6 +62,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 .appbar h1{font-family:var(--f-display);font-size:1.2rem;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .policy h3{font-size:1rem;margin:14px 0 4px}.policy h3:first-child{margin-top:0}.policy p{margin:0 0 8px}.policy ul{margin:0 0 8px;padding-inline-start:20px}.policy li{margin:2px 0}
 .policy-edit{width:100%;min-height:260px;box-sizing:border-box;font:inherit;line-height:1.7}
+.fab-chosen.own{box-sizing:border-box;width:100%;cursor:default}
+.own-card{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;cursor:pointer;color:var(--ink);font:inherit}
+.own-card .oc-ic{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}.own-card .oc-ic svg{width:24px;height:24px}
+.own-card .t{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}.own-card small{color:var(--muted)}.own-card .cnt{color:var(--gold);font-weight:600;font-size:.85rem}.own-card>svg:last-child{width:18px;height:18px;color:var(--muted);flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 10px;font:inherit;font-size:.85rem;color:var(--ink);cursor:pointer}.chip[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .appbar h1.bar-logo{display:flex;align-items:center}.appbar h1.bar-logo .logo{width:38px}
 .appbar .wa-btn{color:var(--accent);background:var(--accent-soft);border-radius:12px;text-decoration:none}.appbar .wa-btn svg{width:22px;height:22px}
 .icon-btn{background:none;border:0;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;cursor:pointer;color:var(--ink);flex:none}
@@ -397,6 +402,7 @@ const D=864e5;
 /* ---------- icons ---------- */
 const I=(d,extra='')=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 const IC={
+ scissors:I('<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/>'),
  shield:I('<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>'),
  headset:I('<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="13" width="4.5" height="6.5" rx="1.6"/><rect x="16.5" y="13" width="4.5" height="6.5" rx="1.6"/><path d="M19 19.5c0 1.6-1.5 2.5-3.5 2.5H13"/>'),
  home:I('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
@@ -429,11 +435,14 @@ const dur=ms=>{const h=ms/36e5;return h<24?`${Math.max(.1,Math.round(h*10)/10)} 
 let S,SES=null;
 const ui={tab:'home',sub:null,adminTab:'overview',flt:{},d:null,openOrder:null,oFilter:'all',msFilter:'review',openMeasure:null,mMethod:'manual',cartProfile:null,del:'pickup',payMode:'full',lastOrder:null,confirm:null,logF:'',login:{step:'phone',phone:'',role:'manager'}};
 
-const fab=id=>S.fabrics.find(f=>f.id===id);
+const OWN_COLORS=[['أبيض','#f8f8f5'],['سكري','#efe5cf'],['رمادي','#9a9c9e'],['كحلي','#2b3447'],['بني','#8a6d52'],['أسود','#26262a']];
+const OWN={id:'own',own:true,name:'قماش العميل',color:'خياطة فقط',code:'قماش العميل',brand:'من العميل',type:'قماش العميل',hex:'#f8f8f5',stock:1e9,reserved:0,active:true,get price(){return S.settings.ownPrice}};
+const fab=id=>id==='own'?OWN:S.fabrics.find(f=>f.id===id);
+const hasOwn=()=>S.cart.some(i=>i.fabricId==='own');
 const opt=(g,id)=>S.options[g].find(o=>o.id===id);
 const avail=f=>r2(f.stock-f.reserved);
 function log(kind,text){S.log.unshift({t:Date.now(),kind,text});if(S.log.length>400)S.log.length=400}
-function unitPrice(it){const f=fab(it.fabricId);let p=H(S.settings.basePrice)+H(f.price);for(const[g]of GROUPS)p+=H(opt(g,it.opts[g]).price);return p}
+function unitPrice(it){const f=fab(it.fabricId);let p=H(S.settings.basePrice)+H(f.price||0);for(const[g]of GROUPS)p+=H(opt(g,it.opts[g]).price);return p}
 function optSummary(o){const p=['ياقة '+opt('collar',o.collar).name,o.sleeve==='s1'?'كم عادي':opt('sleeve',o.sleeve).name,opt('closure',o.closure).name,'جيب أمامي '+opt('front',o.front).name];if(o.right==='r1')p.push('جيب داخلي يمين');if(o.left==='l1')p.push('جيب داخلي يسار');return p.join('، ')}
 // Prices shown are what the customer pays. With vatIncluded the tax is already inside the price and only shown for the invoice.
 function totals(items,fee){const sub=items.reduce((a,it)=>a+it.unit*it.qty,0),pct=S.settings.vatPct;
@@ -530,8 +539,8 @@ function seed(){
   log('نظام','تحميل البيانات التجريبية: 6 أقمشة، 5 طلبات');
   return S;
 }
-function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(S.settings.privacy==null)S.settings.privacy=PRIVACY_DEFAULT;if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});if(!S.settings.realSummer)addRealSummer(S);if(!S.settings.realPrices)applyRealPrices(S);if(!S.settings.vatFix){S.settings.vatIncluded=true;S.settings.vatFix=true}if(!S.settings.payFix){S.settings.allowDeposit=false;S.settings.payFix=true}if(!S.settings.optFix){for(const g in S.options)S.options[g].forEach(o=>o.price=0);S.settings.optFix=true}const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
-function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate()}}catch(e){S=null}if(!S)seed();loadSes()}
+function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(S.settings.privacy==null)S.settings.privacy=PRIVACY_DEFAULT;if(!S.settings.ownPriceFix){S.settings.ownPrice=130;S.settings.ownPriceFix=true}if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});if(!S.settings.realSummer)addRealSummer(S);if(!S.settings.realPrices)applyRealPrices(S);if(!S.settings.vatFix){S.settings.vatIncluded=true;S.settings.vatFix=true}if(!S.settings.payFix){S.settings.allowDeposit=false;S.settings.payFix=true}if(!S.settings.optFix){for(const g in S.options)S.options[g].forEach(o=>o.price=0);S.settings.optFix=true}const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
+function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate()}}catch(e){S=null}if(!S){seed();migrate()}loadSes()}
 function loadSes(){try{SES=JSON.parse(localStorage.getItem(sesKey())||'null')}catch(e){SES=null}if(SES&&(SES.role==='customer')===isStaffApp())SES=null}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function saveSes(){try{SES?localStorage.setItem(sesKey(),JSON.stringify(SES)):localStorage.removeItem(sesKey())}catch(e){}}
@@ -838,6 +847,7 @@ V.home=()=>{
    <div class="seasons">${Object.entries(SEASONS).map(([k,[t,d]])=>{const gs=groupsOf(S.fabrics.filter(f=>isActive(f)&&seasonOf(f)===k)),fs=gs.map(g=>g[0]),n=gs.filter(g=>g.some(f=>orderable(f))).length;
      return `<button class="season ${k}" data-act="season" data-id="${k}"><span class="strip">${fs.slice(0,5).map(f=>`<i style="background:${esc(f.hex)}"></i>`).join('')}</span>
        <span class="sb"><b>${t}</b><small>${d}</small><span class="cnt">${n===0?'لا توجد أقمشة متوفرة':n===1?'قماش واحد متوفر':n===2?'قماشان متوفران':n<=10?n+' أقمشة متوفرة':n+' قماشاً متوفراً'}</span></span></button>`}).join('')}</div>
+   <button class="own-card" data-act="own-start"><span class="oc-ic">${IC.scissors}</span><span class="t"><b>خياطة بقماشك</b><small>عندك قماش؟ نفصّله لك، والمندوب يستلمه من بيتك</small><span class="cnt">${priced(OWN)?'خياطة الثوب '+money(H(OWN.price)):'السعر قريباً'}</span></span>${IC.chev}</button>
    <p class="note demo">هذه نسخة تجريبية: الأقمشة والأسعار والطلبات للتجربة فقط، والدفع محاكاة.</p>
   </div>`;
 };
@@ -872,11 +882,13 @@ V.design=()=>{
     ${Object.entries(SEASONS).map(([k,[t]])=>{const gs=groupsOf(S.fabrics.filter(f=>isActive(f)&&seasonOf(f)===k));return gs.length?`<h3 class="ms-group">${t}</h3><div class="pick">${gs.map(g=>{const f=bestOf(g),ok=orderable(f);return`<button class="pick-fab" data-act="d-fabric" data-id="${f.id}" ${ok?'':'disabled'}>
       <span class="sw split" style="--sw:${esc(g[0].hex)};--sw2:${esc((g[1]||g[0]).hex)}"></span><span class="t"><b>${esc(fabTitle(f))}</b><span class="muted small">${esc(f.label||f.brand)} · ${esc(f.type)}${g.length>1?' · '+g.map(x=>esc(x.color)).join(' / '):''}</span></span>
       <span class="small">${!priced(f)?'السعر قريباً':avail(f)<mpt?'غير متوفر':money(H(f.price))}</span></button>`}).join('')}</div>`:''}).join('')}</div>`;
-  const f=fab(d.fabricId),out=!orderable(f,d.qty),unit=unitPrice(d),vs=variantsOf(f);
+  const f=fab(d.fabricId),out=!orderable(f,d.qty),unit=unitPrice(d),vs=f.own?[]:variantsOf(f);
   const extras=GROUPS.map(([g,l])=>({...opt(g,d.opts[g]),l})).filter(o=>o.price>0);
   return `<div class="stack">
-    <div class="steps"><button data-act="d-refab">١ القماش</button><span class="on">٢ التفاصيل</span></div>
-    <button class="fab-chosen" data-act="d-refab"><span class="sw" style="--sw:${esc(f.hex)}"></span><span class="t"><b>${esc(fabTitle(f))}</b><span class="muted small">${esc(f.color)} · ${esc(f.code)}</span></span><span class="link">تغيير</span></button>
+    ${f.own?'':`<div class="steps"><button data-act="d-refab">١ القماش</button><span class="on">٢ التفاصيل</span></div>`}
+    ${f.own?`<div class="fab-chosen own"><span class="sw" style="--sw:${esc(d.hex||f.hex)}"></span><span class="t"><b>خياطة بقماشك</b><span class="muted small">المندوب يستلم القماش من بيتك</span></span></div>
+    <div class="opt-row"><span class="lbl">لون قماشك (للمعاينة)</span><div class="chips" role="group" aria-label="لون قماشك">${OWN_COLORS.map(([n,h])=>`<button class="chip" data-act="d-owncolor" data-id="${h}" aria-pressed="${(d.hex||OWN.hex)===h}"><i class="dot" style="background:${h}"></i>${n}</button>`).join('')}</div></div>`
+    :`<button class="fab-chosen" data-act="d-refab"><span class="sw" style="--sw:${esc(f.hex)}"></span><span class="t"><b>${esc(fabTitle(f))}</b><span class="muted small">${esc(f.color)} · ${esc(f.code)}</span></span><span class="link">تغيير</span></button>`}
     ${vs.length>1?`<div class="opt-row"><span class="lbl">لون القماش</span><div class="seg two" role="group" aria-label="لون القماش">${vs.map(x=>`<button data-act="d-color" data-id="${x.id}" aria-pressed="${x.id===f.id}" ${orderable(x)?'':'disabled'}><i class="dot" style="background:${esc(x.hex)}"></i>${esc(x.color)}</button>`).join('')}</div></div>`:''}
     ${Thobe3D.supported()?`<div class="stage s3d" id="stage3d">
       <span class="demo-tag">مجسم 3D · اسحب للتدوير</span>
@@ -919,7 +931,7 @@ function addrLink(a){return a&&a.mode==='map'?`https://www.google.com/maps?q=${a
 function dlvText(o){const d=o.delivery;if(d.address)return addrText(d.address);if(d.type==='pickup')return 'استلام من المحل';const z=d.zoneId?S.zones.find(x=>x.id===d.zoneId):null;return z?z.name:'توصيل'}
 const coSteps=n=>`<div class="steps">${['السلة','العنوان','الدفع'].map((l,i)=>i+1===n?`<span class="on">${'١٢٣'[i]} ${l}</span>`:i+1<n?`<button data-act="co-step" data-id="${i+1}">${'١٢٣'[i]} ${l}</button>`:`<span>${'١٢٣'[i]} ${l}</span>`).join('')}</div>`;
 function coShort(c){c=c||co();const lines=cartLines(),need={};lines.forEach(l=>need[l.fabricId]=r2((need[l.fabricId]||0)+l.meters));return Object.keys(need).filter(id=>avail(fab(id))<need[id])}
-function coMsOk(c){if(c.ms==='rep')return !!(c.repDate&&c.repSlot);return !!S.profiles.find(p=>p.id===c.profileId&&p.status!=='rejected')}
+function coMsOk(c){if(c.ms==='rep'||hasOwn())if(!(c.repDate&&c.repSlot))return false;if(c.ms==='rep')return true;return !!S.profiles.find(p=>p.id===c.profileId&&p.status!=='rejected')}
 function coAddrOk(c){return c.addrMode==='short'?/^[A-Z]{4}\d{4}$/.test(c.short):c.picked&&inRiyadh(c.lat,c.lng)}
 
 /* small slippy map (OpenStreetMap tiles), centre pin marks the delivery point */
@@ -965,18 +977,21 @@ V.cart=()=>{
   if(c.step===1){
     const p=S.profiles.find(x=>x.id===c.profileId),tomorrow=new Date(Date.now()+D).toISOString().slice(0,10);
     return `<div class="stack">${coSteps(1)}
-   <div class="panel">${lines.map(l=>{const f=fab(l.fabricId);return`<div class="line"><div class="mini">${thobeSVG(f.hex,l.opts,'front')}</div>
-     <div style="min-width:0"><h3>ثوب · ${esc(fabLabel(f))}</h3><div class="muted small">${esc(optSummary(l.opts))}</div>
+   <div class="panel">${lines.map(l=>{const f=fab(l.fabricId);return`<div class="line"><div class="mini">${thobeSVG(l.hex||f.hex,l.opts,'front')}</div>
+     <div style="min-width:0"><h3>${f.own?'خياطة بقماشك':'ثوب · '+esc(fabLabel(f))}</h3><div class="muted small">${esc(optSummary(l.opts))}</div>
      <div class="row" style="margin-top:6px"><div class="qty"><button data-act="c-qty" data-id="${l.id}" data-d="-1" aria-label="إنقاص">−</button><span class="num">${l.qty}</span><button data-act="c-qty" data-id="${l.id}" data-d="1" aria-label="زيادة">+</button></div><button class="link" data-act="c-remove" data-id="${l.id}">حذف</button></div></div>
      <b style="white-space:nowrap">${money(l.unit*l.qty)}</b></div>`}).join('')}</div>
    <div class="opt-row"><span class="lbl">المقاسات</span><div class="seg two" role="group" aria-label="المقاسات">
      <button data-act="co-ms" data-id="saved" aria-pressed="${c.ms==='saved'}">مقاس موجود</button><button data-act="co-ms" data-id="rep" aria-pressed="${c.ms==='rep'}">زيارة مندوب</button></div></div>
    ${c.ms==='saved'?(usable.length?`<label class="fld" for="co-profile"><span>اختر ملف المقاسات</span><select id="co-profile" data-ch="co" data-k="profileId">${usable.map(x=>`<option value="${x.id}" ${x.id===c.profileId?'selected':''}>${esc(x.name)} · ${x.status==='approved'?'معتمدة':x.status==='review'?'قيد المراجعة':'بانتظار الأخذ'}</option>`).join('')}</select></label>
-       ${p&&!profileReady(p)?'<p class="note warn">هذه المقاسات غير معتمدة بعد. يمكنك الطلب، ويبدأ التفصيل بعد اعتمادها.</p>':''}`
+       ${p&&!profileReady(p)?'<p class="note warn">هذه المقاسات غير معتمدة بعد. يمكنك الطلب، ويبدأ التفصيل بعد اعتمادها.</p>':''}
+       ${hasOwn()?`<h3 class="ms-group" style="margin:6px 0 0">موعد استلام قماشك</h3><div class="form-grid"><label class="fld" for="co-repdate"><span>التاريخ</span><input type="date" id="co-repdate" min="${tomorrow}" value="${esc(c.repDate)}" data-ch="co" data-k="repDate"></label>
+       <label class="fld" for="co-repslot"><span>الموعد</span><select id="co-repslot" data-ch="co" data-k="repSlot"><option value="">اختر</option>${S.settings.slots.map(s=>`<option ${c.repSlot===s?'selected':''}>${esc(s)}</option>`).join('')}</select></label></div>
+       <p class="note">يزورك المندوب على عنوان التوصيل ويستلم القماش. الموعد يتأكد بعد موافقة الإدارة.</p>`:''}`
      :`<p class="note">ما عندك مقاسات محفوظة. أضف مقاساتك أو اختر زيارة مندوب.</p><button class="btn ghost sm" data-act="go" data-id="account" data-sub="measure" data-m="manual" style="align-self:flex-start">أضف مقاساتك</button>`)
    :`<div class="form-grid"><label class="fld" for="co-repdate"><span>تاريخ الزيارة</span><input type="date" id="co-repdate" min="${tomorrow}" value="${esc(c.repDate)}" data-ch="co" data-k="repDate"></label>
        <label class="fld" for="co-repslot"><span>الموعد</span><select id="co-repslot" data-ch="co" data-k="repSlot"><option value="">اختر</option>${S.settings.slots.map(s=>`<option ${c.repSlot===s?'selected':''}>${esc(s)}</option>`).join('')}</select></label></div>
-     <p class="note">يزورك المندوب على عنوان التوصيل لأخذ المقاسات، ويبدأ التفصيل بعد اعتمادها. الموعد يتأكد بعد موافقة الإدارة.</p>`}
+     <p class="note">يزورك المندوب على عنوان التوصيل لأخذ المقاسات${hasOwn()?' واستلام قماشك':''}، ويبدأ التفصيل بعد اعتمادها. الموعد يتأكد بعد موافقة الإدارة.</p>`}
    <div class="panel"><div class="bill"><span class="tot" style="border:0;padding:0;margin:0">الإجمالي</span><span class="tot" style="border:0;padding:0;margin:0">${money(t.total)}</span></div></div>
    ${short.length?`<p class="note bad">الكمية المتاحة لا تكفي من: ${short.map(id=>esc(fabLabel(fab(id)))).join('، ')}</p>`:''}
    <button class="btn wide" data-act="co-next" ${short.length?'disabled':''}>متابعة إلى العنوان</button></div>`}
@@ -999,6 +1014,7 @@ V.cart=()=>{
    <div class="panel stack" style="gap:10px">
      <div class="spread"><span><span class="muted small">التوصيل إلى</span><br><b>${esc(addrText(a))}</b></span><button class="link" data-act="co-step" data-id="2">تعديل</button></div>
      <div class="spread"><span><span class="muted small">المقاسات</span><br><b>${c.ms==='rep'?`زيارة مندوب · <span class="num">${esc(c.repDate)}</span> · <span class="num">${esc(c.repSlot)}</span>`:esc(p?p.name:'')}</b></span><button class="link" data-act="co-step" data-id="1">تعديل</button></div>
+     ${hasOwn()&&c.ms!=='rep'?`<div class="spread"><span><span class="muted small">استلام قماشك</span><br><b><span class="num">${esc(c.repDate)}</span> · <span class="num">${esc(c.repSlot)}</span></b></span><button class="link" data-act="co-step" data-id="1">تعديل</button></div>`:''}
      <div class="spread"><span><span class="muted small">الطلب</span><br><b>${lines.reduce((s,l)=>s+l.qty,0)} ثوب</b></span><button class="link" data-act="co-step" data-id="1">تعديل</button></div></div>
    <div class="panel"><div class="bill">
      <span>المجموع</span><span>${money(t.sub)}</span><span>التوصيل داخل الرياض</span><span>مجاناً</span>
@@ -1106,7 +1122,7 @@ A.overview=()=>{
    <div class="panel stack"><h2>تحتاج متابعة</h2><ul class="alert-list">
       ${late.map(o=>`<li><span><span class="pill bad">متأخر</span> <span class="ref">${o.ref}</span> · ${STAGES[o.stage]}</span><span class="small muted">${dur(Date.now()-o.due)}</span></li>`).join('')}
       ${low.map(f=>`<li><span><span class="pill warn">مخزون منخفض</span> ${esc(fabLabel(f))}</span><span class="small">${mtr(avail(f))}</span></li>`).join('')}
-      ${pend.map(b=>`<li><span><span class="pill warn">حجز مندوب</span> ${esc(b.city)} · <span class="num">${esc(b.date)}</span></span><span class="small muted">بانتظار الموافقة</span></li>`).join('')}
+      ${pend.map(b=>`<li><span><span class="pill warn">${b.purpose==='fabric'?'استلام قماش':'حجز مندوب'}</span> ${b.ref?esc(b.ref)+' · ':''}<span class="num">${esc(b.date)}</span></span><span class="small muted">بانتظار الموافقة</span></li>`).join('')}
       ${msq.map(p=>`<li><span><span class="pill acc">مقاسات</span> ${esc(p.owner||'عميل')} · ${esc(p.name)}</span><button class="link" data-act="open-measure" data-id="${p.id}">مراجعة</button></li>`).join('')}
       ${!late.length&&!low.length&&!pend.length&&!msq.length?'<li class="muted">لا شيء يحتاج متابعة الآن.</li>':''}</ul></div>
    <div class="panel stack"><h2>الطلبات حسب المرحلة</h2><div class="bars">${counts.map((c,i)=>`<div class="bar"><span>${STAGES[i]}</span><span class="t"><i style="width:${c/mx*100}%"></i></span><span class="num">${c}</span></div>`).join('')}</div></div>
@@ -1145,12 +1161,14 @@ function orderDetail(o){
   let gate='';
   if(o.stage===1&&!o.measure.ready)gate='المقاسات غير معتمدة.';
   else if(o.stage===1&&o.paid<o.required)gate='شرط الدفع غير مكتمل.';
+  else if(o.stage===2&&o.ownFabric&&o.ownFabric.status!=='received')gate='بانتظار استلام قماش العميل.';
   else if(o.stage===3&&!o.tailorId)gate='عيّن خياطاً قبل بدء الخياطة.';
   else if(o.stage===6&&!o.qc.trim())gate='سجّل ملاحظة فحص الجودة قبل التغليف.';
   else if(o.stage===8&&o.delivery.status!=='delivered')gate='سجّل التسليم أولاً.';
   else if(o.stage===8&&rem>0)gate='المبلغ المتبقي لم يُسدّد.';
   const zone=o.delivery.zoneId?S.zones.find(z=>z.id===o.delivery.zoneId):null;
-  return `<div class="od">
+  const ownBox=o.ownFabric?`<div class="note ${o.ownFabric.status==='received'?'good':'warn'}" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>قماش العميل: ${o.ownFabric.status==='received'?'تم الاستلام'+(o.ownFabric.at?' · '+fdate.format(o.ownFabric.at):''):'بانتظار الاستلام من المندوب'}</span>${o.ownFabric.status!=='received'&&!o.cancelled&&SES.role!=='tailor'?`<button class="btn sm" data-act="own-recv" data-id="${o.id}">تم الاستلام</button>`:''}</div>`:'';
+  return `<div class="od">${ownBox}
     <div class="box"><h3>الإنتاج</h3>
       <div class="prog"><i style="width:${Math.round(o.stage/9*100)}%"></i></div>
       <label class="fld" for="tl-${o.id}"><span>الخياط المسؤول</span><select id="tl-${o.id}" data-ch="tailor" data-id="${o.id}" ${canMgr&&!o.cancelled&&o.stage<9?'':'disabled'}><option value="">— لم يُعيّن —</option>${S.tailors.map(t=>`<option value="${t.id}" ${o.tailorId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>
@@ -1205,7 +1223,7 @@ A.inventory=()=>{
 };
 A.tailors=()=>`<div class="stack">${tailorTable()}<div class="panel stack"><h2>إضافة خياط</h2><label class="fld" for="nt"><span>الاسم</span><input type="text" id="nt"></label><button class="btn" data-act="t-add">إضافة</button></div></div>`;
 A.reps=()=>`<div class="stack">${[...S.bookings].sort((a,b)=>a.date.localeCompare(b.date)).map(b=>`<div class="panel stack" style="gap:8px"><div class="spread"><b><span class="num">${esc(b.date)}</span> · <span class="num">${esc(b.slot)}</span></b><span class="pill ${BOOK[b.status][1]}">${BOOK[b.status][0]}</span></div>
-   <span class="small">${esc(b.city)} · ${esc(b.address)}</span>
+   <span class="small">${b.purpose?`<b>${{measure:'أخذ مقاسات',fabric:'استلام قماش العميل','measure+fabric':'أخذ مقاسات واستلام قماش العميل'}[b.purpose]}${b.ref?' · '+esc(b.ref):''}</b><br>`:''}${esc(b.city)} · ${esc(b.address)}</span>
    ${b.status==='pending'&&SES.role!=='rep'?`<div class="row"><button class="btn sm" data-act="b-ok" data-id="${b.id}">موافقة</button><button class="btn ghost sm" data-act="b-no" data-id="${b.id}">رفض</button></div>`:''}</div>`).join('')||'<p class="empty">لا توجد حجوزات.</p>'}
   ${SES.role==='rep'?'<p class="note">بدور المندوب ترى المواعيد فقط. الموافقة على الحجوزات من صلاحيات الإدارة.</p>':''}</div>`;
 function numIn(path,val,label,step=1,max){return `<input type="number" min="0" ${max?`max="${max}"`:''} step="${step}" value="${val??''}" data-path="${path}" data-label="${esc(label)}" aria-label="${esc(label)}">`}
@@ -1222,6 +1240,7 @@ A.settings=()=>{const s=S.settings;return `<div class="stack">
     <label class="fld full"><span>حد تنبيه انخفاض المخزون (م)</span>${numIn('settings.lowStock',s.lowStock,'حد التنبيه',1)}</label>
     <label class="fld full"><span>مواعيد زيارات المندوب (موعد في كل سطر)</span><textarea data-path="settings.slots" data-kind="lines" data-label="مواعيد المندوب">${esc(s.slots.join('\n'))}</textarea></label></div></div>
   <div class="panel stack"><h2>أسعار التفصيل</h2><div class="form-grid">
+    <label class="fld full"><span>سعر خياطة الثوب بقماش العميل (فارغ = غير متاح)</span><input type="number" inputmode="decimal" min="0" step="any" value="${s.ownPrice??''}" data-path="settings.ownPrice" data-kind="optnum" data-label="سعر الخياطة بقماش العميل"></label>
     <label class="fld full"><span>رسوم تفصيل تُضاف على كل ثوب (0 إذا كان سعر القماش شاملاً)</span>${numIn('settings.basePrice',s.basePrice,'رسوم التفصيل')}</label>
     ${GROUPS.map(([g,l])=>S.options[g].map(o=>`<label class="fld"><span>${l}: ${esc(o.name)}</span>${numIn(`options.${g}.${o.id}.price`,o.price,'سعر '+l+' '+o.name)}</label>`).join('')).join('')}</div>
     <p class="muted small" style="margin:0">سعر الثوب = سعر القماش (شامل التفصيل) + رسوم التفصيل إن وُجدت + إضافات الخيارات.</p></div>
@@ -1360,7 +1379,7 @@ function screen(){
   if(ui.sub&&ui.sub.startsWith('season:'))return V.season(ui.sub.slice(7));
   return V[ui.tab]();
 }
-function afterRender(){try{mountMap()}catch(e){}try{const st=document.getElementById('stage3d');if(st&&ui.d&&ui.d.fabricId)Thobe3D.mount(st,fab(ui.d.fabricId).hex,ui.d.opts,fitFor(ui.d.fit,fab(ui.d.fabricId)))}catch(e){}}
+function afterRender(){try{mountMap()}catch(e){}try{const st=document.getElementById('stage3d');if(st&&ui.d&&ui.d.fabricId)Thobe3D.mount(st,ui.d.hex||fab(ui.d.fabricId).hex,ui.d.opts,fitFor(ui.d.fit,fab(ui.d.fabricId)))}catch(e){}}
 function render(){
   const app=$('#app');app.classList.toggle('staff-app',isStaffApp());
   if(!SES){app.innerHTML=loginView();return}
@@ -1368,11 +1387,11 @@ function render(){
   if(isStaff()&&!nav.some(n=>n[0]===ui.tab))ui.tab=nav[0][0];
   const cartN=S.cart.reduce((a,i)=>a+i.qty,0);
   app.innerHTML=`<header class="appbar"><div class="pad">
-     ${ui.sub?`<button class="icon-btn" data-act="back" aria-label="رجوع">${IC.back}</button>`:!isStaff()&&ui.tab==='design'?`<button class="icon-btn" data-act="go" data-id="store" aria-label="رجوع للأقمشة">${IC.back}</button>`:''}
+     ${ui.sub?`<button class="icon-btn" data-act="back" aria-label="رجوع">${IC.back}</button>`:!isStaff()&&ui.tab==='design'?`<button class="icon-btn" data-act="go" data-id="${ui.d&&ui.d.fabricId==='own'?'home':'store'}" aria-label="رجوع">${IC.back}</button>`:''}
      ${!isStaff()&&ui.tab==='home'&&!ui.sub?`<h1 class="bar-logo"><span class="logo" role="img" aria-label="غرز"></span></h1>`:`<h1>${esc(titleFor())}</h1>`}<span class="demo-badge">${isStaff()?ROLES[SES.role]+' · ':''}تجريبي</span>
      ${isStaff()?'':`<a class="icon-btn wa-btn" href="${waLink()}" target="_blank" rel="noopener" data-act="wa" aria-label="تواصل معنا عبر واتساب">${IC.headset}</a>`}</div></header>
    <main class="pad ${nav.length<2?'no-nav':''}">${screen()}</main>
-   ${nav.length>1?`<nav class="tabbar" aria-label="التنقل"><div class="in">${nav.map(([k,l,ic])=>`<button data-act="go" data-id="${k}" aria-current="${ui.tab===k||(k==='store'&&ui.tab==='design')?'page':'false'}">${ic}<span>${l}</span>${k==='cart'&&cartN?`<span class="badge num">${cartN}</span>`:''}${k==='measures'&&isStaff()&&canApproveMs()&&S.profiles.some(p=>p.status==='review')?`<span class="badge num">${S.profiles.filter(p=>p.status==='review').length}</span>`:''}</button>`).join('')}</div></nav>`:''}`;
+   ${nav.length>1?`<nav class="tabbar" aria-label="التنقل"><div class="in">${nav.map(([k,l,ic])=>`<button data-act="go" data-id="${k}" aria-current="${ui.tab===k||(k==='store'&&ui.tab==='design'&&!(ui.d&&ui.d.fabricId==='own'))||(k==='home'&&ui.tab==='design'&&ui.d&&ui.d.fabricId==='own')?'page':'false'}">${ic}<span>${l}</span>${k==='cart'&&cartN?`<span class="badge num">${cartN}</span>`:''}${k==='measures'&&isStaff()&&canApproveMs()&&S.profiles.some(p=>p.status==='review')?`<span class="badge num">${S.profiles.filter(p=>p.status==='review').length}</span>`:''}</button>`).join('')}</div></nav>`:''}`;
   afterRender();
 }
 
@@ -1381,6 +1400,9 @@ const ord=id=>S.orders.find(o=>o.id===id);
 function setPath(path,val){const p=path.split('.');let o=S;for(let i=0;i<p.length-1;i++)o=Array.isArray(o)?o.find(x=>x.id===p[i]):o[p[i]];const k=p[p.length-1],old=o[k];o[k]=val;return old}
 const toTop=()=>window.scrollTo(0,0);
 const ACT={
+ 'own-start':()=>{ui.d={...newDraft('own'),hex:OWN.hex};Thobe3D.reset();ui.tab='design';ui.sub=null;toTop()},
+ 'd-owncolor':id=>{ui.d.hex=id},
+ 'own-recv':id=>{const o=S.orders.find(x=>x.id===id);if(!o||!o.ownFabric)return;o.ownFabric.status='received';o.ownFabric.at=Date.now();log('طلب',`${o.ref}: استلام قماش العميل`);save();toast('سُجّل استلام القماش')},
  'privacy-preview':()=>{ui.privPrev=!ui.privPrev},
  'privacy-ask':()=>{ui.confirm='privacy'},
  'privacy-reset':()=>{S.settings.privacy=PRIVACY_DEFAULT;S.settings.privacyUpdated=Date.now();ui.confirm=null;log('إعدادات','استرجاع سياسة الخصوصية الافتراضية');save();toast('رجعت السياسة الافتراضية')},
@@ -1418,7 +1440,7 @@ const ACT={
      if(c.addrMode==='short'){c.short=$('#co-short').value.replace(/\s/g,'').toUpperCase();if(!/^[A-Z]{4}\d{4}$/.test(c.short))return toast('العنوان المختصر: ٤ أحرف إنجليزية ثم ٤ أرقام، مثل RRRD2929','bad')}
      else{if(!c.picked)return toast('حرّك الخريطة حتى يصير الدبوس على موقعك، أو اضغط «موقعي الحالي»','bad');if(!inRiyadh(c.lat,c.lng))return toast('الموقع خارج الرياض. التوصيل داخل الرياض فقط','bad')}
      c.step=3;toTop()}},
- 'add-cart':()=>{const d=ui.d;if(!orderable(fab(d.fabricId),d.qty))return toast('هذا القماش غير متاح للطلب حالياً','bad');S.cart.push({id:'i'+Date.now(),fabricId:d.fabricId,opts:{...d.opts},qty:d.qty});save();toast('أُضيف إلى السلة')},
+ 'add-cart':()=>{const d=ui.d;if(!orderable(fab(d.fabricId),d.qty))return toast(d.fabricId==='own'?'سعر الخياطة بقماشك لم يُحدد بعد':'هذا القماش غير متاح للطلب حالياً','bad');S.cart.push({id:'i'+Date.now(),fabricId:d.fabricId,opts:{...d.opts},qty:d.qty,...(d.fabricId==='own'?{hex:d.hex||OWN.hex}:{})});save();toast('أُضيف إلى السلة')},
  'c-qty':(id,b)=>{const it=S.cart.find(x=>x.id===id);it.qty=Math.min(20,Math.max(1,it.qty+(+b.dataset.d)));save()},
  'c-remove':id=>{S.cart=S.cart.filter(x=>x.id!==id);save()},
  'm-method':id=>{ui.mMethod=id},
@@ -1433,18 +1455,19 @@ const ACT={
    save();toTop();toast(ui.mMethod==='rep'?'أُرسل طلب الحجز، بانتظار موافقة الإدارة':ui.mMethod==='manual'?'أُرسلت المقاسات للمراجعة':'حُفظ ملف المقاسات')},
  pay:()=>{
    const c=co();if(c.step!==3||!coMsOk(c)||!coAddrOk(c))return toast('أكمل خطوات العنوان والمقاسات أولاً','bad');
-   const lines=cartLines(),need={};lines.forEach(l=>need[l.fabricId]=r2((need[l.fabricId]||0)+l.meters));
+   const lines=cartLines(),need={};lines.forEach(l=>need[l.fabricId]=r2((need[l.fabricId]||0)+l.meters));const own=!!need.own;delete need.own;
+   if(own&&!priced(OWN))return toast('سعر الخياطة بقماشك لم يُحدد بعد','bad');
    for(const id in need){const f=fab(id);if(avail(f)<need[id])return toast(`الكمية المتاحة من ${fabLabel(f)} لا تكفي`,'bad')}
    const t=totals(lines,0),now=Date.now(),n=S.seq++,ref='TH-'+n;
    const address=c.addrMode==='short'?{mode:'short',short:c.short,note:c.note}:{mode:'map',lat:+c.lat.toFixed(6),lng:+c.lng.toFixed(6),note:c.note};
    let p;
-   if(c.ms==='rep'){const b={id:'b'+now,city:'الرياض',address:addrText(address),addr:address,date:c.repDate,slot:c.repSlot,status:'pending',created:now};S.bookings.push(b);
+   let fb=null;if(c.ms==='rep'){const b={id:'b'+now,city:'الرياض',address:addrText(address),addr:address,date:c.repDate,slot:c.repSlot,status:'pending',created:now,purpose:own?'measure+fabric':'measure',ref};S.bookings.push(b);fb=b.id;
      p={id:'p'+now,name:'زيارة مندوب · '+ref,owner:'عميل تجريبي',phone:SES.phone,method:'rep',values:{},status:'awaiting',bookingId:b.id,updated:now,history:[]};S.profiles.push(p);
      log('حجز',`${ref}: طلب زيارة مندوب ${c.repDate} ${c.repSlot}`)}
-   else p=S.profiles.find(x=>x.id===c.profileId);
+   else{p=S.profiles.find(x=>x.id===c.profileId);if(own){const b={id:'b'+now,city:'الرياض',address:addrText(address),addr:address,date:c.repDate,slot:c.repSlot,status:'pending',created:now,purpose:'fabric',ref};S.bookings.push(b);fb=b.id;log('حجز',`${ref}: طلب استلام قماش العميل ${c.repDate} ${c.repSlot}`)}}
    const o={id:'o'+n,ref,created:now,due:addWorkDays(now,S.settings.dueDays),customer:'عميل تجريبي',items:lines.map(({id,...l})=>l),profileId:p.id,measure:{ready:profileReady(p)},
      delivery:{type:'delivery',address,fee:0,status:'pending',date:null},sub:t.sub,vat:t.vat,total:t.total,payMode:'full',required:t.total,paid:t.total,
-     payments:[{t:now,amount:t.total,note:'دفع كامل عند الطلب (محاكاة)'}],stage:0,stageTimes:[now],tailorId:null,qc:'',reserved:need,consumed:{},cancelled:false};
+     payments:[{t:now,amount:t.total,note:'دفع كامل عند الطلب (محاكاة)'}],stage:0,stageTimes:[now],tailorId:null,qc:'',reserved:need,consumed:{},cancelled:false,...(own?{ownFabric:{status:'pending',bookingId:fb}}:{})};
    for(const id in need){const f=fab(id);f.reserved=r2(f.reserved+need[id]);log('مخزون',`حجز ${need[id]} م من ${f.code} للطلب ${o.ref}`)}
    S.orders.push(o);log('طلب',`طلب جديد ${o.ref} بقيمة ${(t.total/100).toFixed(2)} ر.س · ${addrText(address)}`);log('دفع',`${o.ref}: استلام ${(t.total/100).toFixed(2)} ر.س (دفع كامل، محاكاة)`);
    S.cart=[];ui.co=null;ui.lastOrder=o.id;save();toTop()},
@@ -1476,7 +1499,8 @@ const ACT={
  'o-adv':id=>{
    const o=ord(id),next=o.stage+1;if(o.cancelled||next>9)return;
    if(o.stage===1){if(!o.measure.ready)return toast('لا يمكن المتابعة: المقاسات غير معتمدة','bad');if(o.paid<o.required)return toast('لا يمكن المتابعة: شرط الدفع غير مكتمل','bad')}
-   if(next===2&&!Object.keys(o.reserved).length)return toast('لا يوجد قماش محجوز لهذا الطلب','bad');
+   if(next===2&&!Object.keys(o.reserved).length&&!o.ownFabric)return toast('لا يوجد قماش محجوز لهذا الطلب','bad');
+   if(next===3&&o.ownFabric&&o.ownFabric.status!=='received')return toast('سجّل استلام قماش العميل أولاً','bad');
    if(next===3){const use={};for(const fid in o.reserved){const v=r2(parseFloat($(`#cut-${o.id}-${fid}`).value)),f=fab(fid);if(!(v>0))return toast('أدخل الاستهلاك الفعلي','bad');if(v>r2(f.stock-f.reserved+o.reserved[fid]))return toast(`الاستهلاك يتجاوز المتاح من ${f.code}`,'bad');use[fid]=v}
      for(const fid in use){const f=fab(fid),res=o.reserved[fid];f.stock=r2(f.stock-use[fid]);f.reserved=r2(f.reserved-res);o.consumed[fid]=use[fid];
        log('مخزون',`قص ${o.ref}: خصم ${use[fid]} م من ${f.code} (المحجوز ${res} م${use[fid]!==res?'، الفرق '+r2(use[fid]-res)+' م':''})`)}
@@ -1521,6 +1545,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;if(e.target.id
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.path){let v;
     if(t.type==='checkbox')v=t.checked;
+    else if(t.dataset.kind==='optnum'){if(t.value.trim()===''){v=null}else{v=parseFloat(t.value);if(!isFinite(v)||v<=0){toast('قيمة غير صحيحة','bad');return render()}}}
     else if(t.dataset.kind==='longtext'){v=t.value.trim();if(!v){toast('لا يمكن ترك السياسة فارغة','bad');return render()}setPath(t.dataset.path,v);S.settings.privacyUpdated=Date.now();log('إعدادات',`تحديث ${t.dataset.label}`);save();toast('حُفظت السياسة');return render()}
     else if(t.dataset.kind==='text'){v=t.value}
     else if(t.dataset.kind==='lines'){v=t.value.split('\n').map(x=>x.trim()).filter(Boolean);if(!v.length){toast('أدخل موعداً واحداً على الأقل','bad');return render()}}
