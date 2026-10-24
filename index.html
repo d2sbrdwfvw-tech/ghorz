@@ -60,6 +60,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .appbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
 .appbar .pad{display:flex;align-items:center;gap:8px;min-height:54px;padding-block:6px}
 .appbar h1{font-family:var(--f-display);font-size:1.2rem;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.policy h3{font-size:1rem;margin:14px 0 4px}.policy h3:first-child{margin-top:0}.policy p{margin:0 0 8px}.policy ul{margin:0 0 8px;padding-inline-start:20px}.policy li{margin:2px 0}
+.policy-edit{width:100%;min-height:260px;box-sizing:border-box;font:inherit;line-height:1.7}
 .appbar h1.bar-logo{display:flex;align-items:center}.appbar h1.bar-logo .logo{width:38px}
 .appbar .wa-btn{color:var(--accent);background:var(--accent-soft);border-radius:12px;text-decoration:none}.appbar .wa-btn svg{width:22px;height:22px}
 .icon-btn{background:none;border:0;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;cursor:pointer;color:var(--ink);flex:none}
@@ -395,6 +397,7 @@ const D=864e5;
 /* ---------- icons ---------- */
 const I=(d,extra='')=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 const IC={
+ shield:I('<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>'),
  headset:I('<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="13" width="4.5" height="6.5" rx="1.6"/><rect x="16.5" y="13" width="4.5" height="6.5" rx="1.6"/><path d="M19 19.5c0 1.6-1.5 2.5-3.5 2.5H13"/>'),
  home:I('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
  fabric:I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/>'),
@@ -527,7 +530,7 @@ function seed(){
   log('نظام','تحميل البيانات التجريبية: 6 أقمشة، 5 طلبات');
   return S;
 }
-function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});if(!S.settings.realSummer)addRealSummer(S);if(!S.settings.realPrices)applyRealPrices(S);if(!S.settings.vatFix){S.settings.vatIncluded=true;S.settings.vatFix=true}if(!S.settings.payFix){S.settings.allowDeposit=false;S.settings.payFix=true}if(!S.settings.optFix){for(const g in S.options)S.options[g].forEach(o=>o.price=0);S.settings.optFix=true}const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
+function migrate(){for(const g in NEW_OPTS)if(!S.options[g])S.options[g]=NEW_OPTS[g].map(o=>({...o}));S.zones.forEach(z=>z.fee=0);if(S.settings.privacy==null)S.settings.privacy=PRIVACY_DEFAULT;if(!S.settings.workDays){S.settings.dueDays=7;S.settings.workDays=true}const z=S.options.closure.find(o=>o.id==='z2');if(z&&z.name==='سحاب')z.name='سحاب مخفي';S.profiles.forEach(p=>{if(!p.status)p.status=(p.method==='manual'&&MFIELDS.every(([k])=>p.values&&p.values[k]>0))||p.taken?'approved':'awaiting';p.owner=p.owner||'عميل تجريبي';p.history=p.history||[];p.values=p.values||{}});S.fabrics.forEach(f=>{if(!f.season)f.season=seasonOf(f)});if(!S.settings.realSummer)addRealSummer(S);if(!S.settings.realPrices)applyRealPrices(S);if(!S.settings.vatFix){S.settings.vatIncluded=true;S.settings.vatFix=true}if(!S.settings.payFix){S.settings.allowDeposit=false;S.settings.payFix=true}if(!S.settings.optFix){for(const g in S.options)S.options[g].forEach(o=>o.price=0);S.settings.optFix=true}const fix=it=>{it.opts={...DEF_OPTS,...it.opts}};S.cart.forEach(fix);S.orders.forEach(o=>o.items.forEach(fix))}
 function load(){try{const r=localStorage.getItem(KEY);if(r){S=JSON.parse(r);migrate()}}catch(e){S=null}if(!S)seed();loadSes()}
 function loadSes(){try{SES=JSON.parse(localStorage.getItem(sesKey())||'null')}catch(e){SES=null}if(SES&&(SES.role==='customer')===isStaffApp())SES=null}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -1007,13 +1010,42 @@ V.cart=()=>{
    ${short.length?`<p class="note bad">الكمية المتاحة لا تكفي من: ${short.map(id=>esc(fabLabel(fab(id)))).join('، ')}</p>`:''}
    <button class="btn wide" data-act="pay" ${short.length?'disabled':''}>ادفع ${money(t.total)}</button></div>`;
 };
+const PRIVACY_DEFAULT=`نحن في غرز نحترم خصوصيتك ونلتزم بحماية بياناتك الشخصية وفق نظام حماية البيانات الشخصية في المملكة العربية السعودية.
+
+## البيانات التي نجمعها
+- رقم الجوال لتسجيل الدخول والتواصل معك بخصوص طلبك.
+- مقاسات الجسم اللازمة لتفصيل الثوب.
+- عنوان التوصيل وموقعك على الخريطة لإيصال الطلب.
+- تفاصيل الطلبات والمدفوعات (لا نحفظ بيانات البطاقات البنكية).
+
+## كيف نستخدم بياناتك
+- تنفيذ طلبك وتفصيله وتوصيله.
+- التواصل معك بخصوص حالة الطلب وزيارة المندوب.
+- تحسين خدماتنا وتجربة التطبيق.
+
+## مشاركة البيانات
+لا نبيع بياناتك ولا نشاركها مع أي جهة، إلا مع شركاء التوصيل ومزوّد الدفع بالقدر اللازم لإتمام الطلب، أو عند طلب جهة رسمية مختصة.
+
+## حماية البيانات
+نحفظ بياناتك بطرق آمنة، ولا يطّلع عليها إلا الموظفون المعنيون بتنفيذ طلبك.
+
+## حقوقك
+يحق لك طلب الاطلاع على بياناتك أو تصحيحها أو حذفها في أي وقت عبر التواصل مع خدمة العملاء.
+
+## التواصل
+لأي استفسار عن الخصوصية، تواصل معنا عبر زر خدمة العملاء أعلى التطبيق.`;
+const policyHtml=t=>{const out=[];let ul=null;for(const raw of String(t||'').split('\n')){const l=raw.trim();
+  if(l.startsWith('- ')){if(!ul){ul=[];out.push(ul)}ul.push(l.slice(2));continue}ul=null;
+  if(!l)continue;out.push(l.startsWith('## ')?`<h3>${esc(l.slice(3))}</h3>`:`<p>${esc(l)}</p>`)}
+  return out.map(x=>Array.isArray(x)?`<ul>${x.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>`:x).join('')};
+V.privacy=()=>`<div class="panel policy">${policyHtml(S.settings.privacy??PRIVACY_DEFAULT)}${S.settings.privacyUpdated?`<p class="muted small">آخر تحديث: ${fdate.format(S.settings.privacyUpdated)}</p>`:''}</div>`;
 V.account=()=>`<div class="stack">
   <div class="panel acct-head"><div class="av">${IC.user}</div>
    <div><b>عميل تجريبي</b><div class="muted small"><bdi dir="ltr" class="num">+966 ${esc(SES.phone)}</bdi></div></div></div>
   <div class="list">
    <button data-act="go" data-id="account" data-sub="orders">${IC.list}<span class="grow">طلباتي</span><span class="muted small">${S.orders.length}</span>${IC.chev}</button>
-   <button data-act="go" data-id="account" data-sub="measure">${IC.ruler}<span class="grow">المقاسات وحجز المندوب</span><span class="muted small">${S.profiles.length}</span>${IC.chev}</button>
   </div>
+  <div class="list"><button data-act="go" data-id="account" data-sub="privacy">${IC.shield}<span class="grow">سياسة الخصوصية</span>${IC.chev}</button></div>
   <div class="list"><button data-act="logout">${IC.out}<span class="grow">تسجيل الخروج</span></button></div>
 </div>`;
 V.orders=()=>`<div class="list">${myOrders().map(o=>`<button data-act="open-order" data-id="${o.id}"><div class="grow stack" style="gap:6px">
@@ -1195,6 +1227,9 @@ A.settings=()=>{const s=S.settings;return `<div class="stack">
     <p class="muted small" style="margin:0">سعر الثوب = سعر القماش (شامل التفصيل) + رسوم التفصيل إن وُجدت + إضافات الخيارات.</p></div>
   <div class="panel stack"><h2>سعر الثوب لكل قماش (شامل التفصيل)</h2><div class="form-grid">${S.fabrics.filter(isActive).map(f=>`<label class="fld"><span>${esc(fabLabel(f))}</span>${numIn(`fabrics.${f.id}.price`,f.price,'سعر قماش '+f.code)}</label>`).join('')}</div></div>
   <div class="panel stack"><h2>خدمة العملاء</h2><label class="fld"><span>رقم واتساب خدمة العملاء</span><input type="tel" inputmode="numeric" dir="ltr" data-path="settings.whatsapp" data-kind="text" data-label="رقم واتساب" value="${esc(s.whatsapp||WA_DEFAULT)}" placeholder="05XXXXXXXX"></label><p class="muted small" style="margin:0">يظهر زر السماعة أعلى كل صفحة في تطبيق العملاء ويفتح محادثة واتساب على هذا الرقم.</p></div>
+  <div class="panel stack"><h2>سياسة الخصوصية</h2><p class="muted small" style="margin:0">تظهر للعملاء في «حسابي». اكتب كل فقرة في سطر، وابدأ العنوان بـ ## والنقطة بـ - </p>
+    <textarea class="policy-edit" data-path="settings.privacy" data-kind="longtext" data-label="سياسة الخصوصية">${esc(s.privacy??PRIVACY_DEFAULT)}</textarea>
+    <div class="row">${ui.confirm==='privacy'?`<span class="muted small">ترجع للنص الافتراضي؟</span><button class="btn danger sm" data-act="privacy-reset">تأكيد</button><button class="btn ghost sm" data-act="confirm-no">تراجع</button>`:`<button class="btn ghost sm" data-act="privacy-ask">استرجاع النص الافتراضي</button>`}<button class="btn ghost sm" data-act="privacy-preview">${ui.privPrev?'إخفاء المعاينة':'معاينة'}</button></div>${ui.privPrev?`<div class="panel policy" style="background:var(--app)">${policyHtml(s.privacy??PRIVACY_DEFAULT)}</div>`:''}</div>
   <div class="panel stack"><h2>التوصيل</h2><p class="muted small" style="margin:0">التوصيل مجاني داخل الرياض فقط. يحدد العميل موقعه على الخريطة أو بالعنوان الوطني المختصر، ويظهر العنوان في تفاصيل الطلب.</p></div>
   <div class="panel stack"><h2>البيانات التجريبية</h2>${ui.confirm==='reset'?`<p class="note bad">ستُحذف كل التغييرات وتعود البيانات الأولية.</p><div class="row"><button class="btn danger sm" data-act="reset-yes">تأكيد</button><button class="btn ghost sm" data-act="confirm-no">تراجع</button></div>`:`<button class="btn ghost" data-act="reset">إعادة ضبط البيانات التجريبية</button>`}</div>
  </div>`};
@@ -1313,13 +1348,13 @@ const waNum=()=>{let n=String((S.settings&&S.settings.whatsapp)||WA_DEFAULT).rep
 const waLink=()=>waNum()?`https://wa.me/${waNum()}?text=${encodeURIComponent('السلام عليكم، أحتاج مساعدة بخصوص تفصيل ثوب من غرز')}`:'#';
 function titleFor(){
   if(isStaff()){if(ui.sub)return ATABS[ui.sub];return ui.tab==='more'?'المزيد':ATABS[ui.tab]}
-  if(ui.sub==='orders')return'طلباتي';if(ui.sub==='measure')return'المقاسات';
+  if(ui.sub==='orders')return'طلباتي';if(ui.sub==='privacy')return'سياسة الخصوصية';if(ui.sub==='measure')return'المقاسات';
   if(ui.sub&&ui.sub.startsWith('order:'))return'تفاصيل الطلب';if(ui.sub&&ui.sub.startsWith('fabric:'))return'القماش';if(ui.sub&&ui.sub.startsWith('season:'))return SEASONS[ui.sub.slice(7)][0];
   return{home:'غرز',store:'الأقمشة',design:'تصميم الثوب',cart:'السلة',account:'حسابي'}[ui.tab];
 }
 function screen(){
   if(isStaff()){if(ui.sub)return A[ui.sub]();return A[ui.tab]()}
-  if(ui.sub==='orders')return V.orders();if(ui.sub==='measure')return V.measure();
+  if(ui.sub==='orders')return V.orders();if(ui.sub==='privacy')return V.privacy();if(ui.sub==='measure')return V.measure();
   if(ui.sub&&ui.sub.startsWith('order:'))return V.order(ui.sub.slice(6));
   if(ui.sub&&ui.sub.startsWith('fabric:'))return V.fabric(ui.sub.slice(7));
   if(ui.sub&&ui.sub.startsWith('season:'))return V.season(ui.sub.slice(7));
@@ -1346,6 +1381,9 @@ const ord=id=>S.orders.find(o=>o.id===id);
 function setPath(path,val){const p=path.split('.');let o=S;for(let i=0;i<p.length-1;i++)o=Array.isArray(o)?o.find(x=>x.id===p[i]):o[p[i]];const k=p[p.length-1],old=o[k];o[k]=val;return old}
 const toTop=()=>window.scrollTo(0,0);
 const ACT={
+ 'privacy-preview':()=>{ui.privPrev=!ui.privPrev},
+ 'privacy-ask':()=>{ui.confirm='privacy'},
+ 'privacy-reset':()=>{S.settings.privacy=PRIVACY_DEFAULT;S.settings.privacyUpdated=Date.now();ui.confirm=null;log('إعدادات','استرجاع سياسة الخصوصية الافتراضية');save();toast('رجعت السياسة الافتراضية')},
  'wa':(id,b,e)=>{if(!waNum()){e.preventDefault();toast('رقم واتساب خدمة العملاء لم يُضف بعد','bad')}return false},
  'login-role':id=>{ui.login.phone=$('#ph').value;ui.login.role=id},
  'login-send':()=>{let v=$('#ph').value.replace(/\D/g,'');if(v.startsWith('0'))v=v.slice(1);if(!/^5\d{8}$/.test(v))return toast('أدخل رقم جوال سعودي يبدأ بـ 5 (9 أرقام)','bad');ui.login.phone=v;ui.login.step='otp';setTimeout(()=>$('#otp')?.focus(),50)},
@@ -1483,6 +1521,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;if(e.target.id
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.path){let v;
     if(t.type==='checkbox')v=t.checked;
+    else if(t.dataset.kind==='longtext'){v=t.value.trim();if(!v){toast('لا يمكن ترك السياسة فارغة','bad');return render()}setPath(t.dataset.path,v);S.settings.privacyUpdated=Date.now();log('إعدادات',`تحديث ${t.dataset.label}`);save();toast('حُفظت السياسة');return render()}
     else if(t.dataset.kind==='text'){v=t.value}
     else if(t.dataset.kind==='lines'){v=t.value.split('\n').map(x=>x.trim()).filter(Boolean);if(!v.length){toast('أدخل موعداً واحداً على الأقل','bad');return render()}}
     else{v=parseFloat(t.value);if(!isFinite(v)||v<0||(t.max&&v>+t.max)||(t.dataset.path==='settings.depositPct'&&v<1)||(t.dataset.path==='settings.metersPerThobe'&&v<=0)||(t.dataset.path==='settings.dueDays'&&(v<1||v!==Math.round(v)))){toast('قيمة غير صحيحة','bad');return render()}}
